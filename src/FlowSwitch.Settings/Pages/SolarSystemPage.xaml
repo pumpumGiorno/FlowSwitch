@@ -24,7 +24,7 @@
             <c:SettingSlider Value="{Binding Settings.Solar.OrbitShape}" />
         </c:SettingCard>
         <c:SettingCard Header="Number of orbits" Icon="&#xE81E;"
-                       Description="Automatic uses one orbit for up to 8 windows, then adds more as needed.">
+                       Description="Automatic: one orbit for up to 5 windows, two for up to 10, then three and four. A fixed number gains orbits only when needed to keep windows apart.">
             <c:SettingSlider Minimum="0" Maximum="4" Format="Number" MinimumLabel="Auto" TickFrequency="1" IsSnapToTickEnabled="True"
                              SmallChange="1" LargeChange="1" Value="{Binding Settings.Solar.OrbitCount}" />
         </c:SettingCard>

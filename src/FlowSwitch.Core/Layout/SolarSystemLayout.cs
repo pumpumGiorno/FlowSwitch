@@ -71,11 +71,12 @@ public sealed class SolarSystemLayout : ILayoutEngine
 
     public bool Wraps => true;
 
-    public static int AutoRingCount(int windowCount)
-    {
-        int others = windowCount - 1;
-        return others <= 8 ? 1 : others <= 16 ? 2 : others <= 26 ? 3 : 4;
-    }
+    /// <summary>Fewest orbits that hold <paramref name="windowCount"/> windows without piling them up.</summary>
+    public static int MinimumRingCount(int windowCount) => windowCount <= 10 ? 1 : windowCount <= 26 ? 2 : 3;
+
+    /// <summary>Up to 5 windows: one orbit; 6–10: two; beyond that three, then four.</summary>
+    public static int AutoRingCount(int windowCount) =>
+        windowCount <= 5 ? 1 : windowCount <= 10 ? 2 : windowCount <= 18 ? 3 : 4;
 
     public void Compute(LayoutContext ctx, ReadOnlySpan<LayoutItem> items, LayoutResult result)
     {
@@ -200,7 +201,8 @@ public sealed class SolarSystemLayout : ILayoutEngine
     /// <summary>Chooses orbit count and radii, then builds the per-side path through the resting slots.</summary>
     private void Configure(int n, SolarSystemSettings solar, float cardSize, float expansion)
     {
-        int requested = Math.Clamp(solar.OrbitCount > 0 ? solar.OrbitCount : AutoRingCount(n), 1, 4);
+        // A chosen orbit count is honoured as long as the orbits can hold the windows cleanly.
+        int requested = Math.Clamp(solar.OrbitCount > 0 ? Math.Max(solar.OrbitCount, MinimumRingCount(n)) : AutoRingCount(n), 1, 4);
         var key = (n, requested, solar.OrbitShape, solar.OrbitSpacing, cardSize, MathF.Round(expansion * 100f) / 100f);
         if (key == _cacheKey) return;
         _cacheKey = key;
@@ -218,7 +220,7 @@ public sealed class SolarSystemLayout : ILayoutEngine
             for (int r = 0; r < rings - 1; r++)
             {
                 double ideal = perSide * (BaseRx[rings - 1][r] / RingScales[r]) / weightSum;
-                capacities[r] = Math.Max(r == 0 ? 2 : 1, (int)Math.Round(ideal));
+                capacities[r] = Math.Max(1, (int)Math.Round(ideal));
                 used += capacities[r];
             }
             if (half - used >= 1.5) break;
@@ -303,8 +305,11 @@ public sealed class SolarSystemLayout : ILayoutEngine
             if (count == 2) return new[] { 62f, 128f };
             return Linspace(54f, 146f, count);
         }
-        if (count == 1) return new[] { 100f };
-        return Linspace(34f, 160f, count);
+        if (count == 1) return new[] { ring % 2 == 1 ? 100f : 124f };
+        // Neighbouring orbits must not put their end slots at the same angle, or one card sits right
+        // behind the other where the path hands over (front) or turns (back). Odd orbits span the
+        // full flank, even outer orbits a narrower arc, so the ends interleave.
+        return ring % 2 == 1 ? Linspace(34f, 160f, count) : Linspace(60f, 136f, count);
     }
 
     private static float[] Linspace(float from, float to, int count)

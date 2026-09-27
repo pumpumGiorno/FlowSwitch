@@ -79,6 +79,45 @@ public class LayoutTests
         }
     }
 
+    [Fact]
+    public void Planets_do_not_pile_up_on_each_other()
+    {
+        var engine = new SolarSystemLayout();
+        var result = new LayoutResult();
+        var screen = new Vector2(2560, 1440);
+        for (int rings = 0; rings <= 4; rings++)
+        {
+            for (int n = 2; n <= 30; n++)
+            {
+                var ctx = Context(screen, 0);
+                ctx.Solar = new SolarSystemSettings { OrbitCount = rings };
+                engine.Compute(ctx, Items(n), result);
+                float s = ctx.Space.Scale;
+                // Up to 16 windows (the automatic layouts people see daily) planets stay apart;
+                // very full systems may stack slightly in depth, never hide one another.
+                float limit = rings == 0 && n <= 16 ? 0.05f : 0.25f;
+                for (int i = 1; i < n; i++)
+                {
+                    for (int j = i + 1; j < n; j++)
+                    {
+                        float ratio = OverlapRatio(CardRect(result.Poses[i], s, false), CardRect(result.Poses[j], s, false));
+                        Assert.True(ratio <= limit, $"n={n} orbits={rings}: cards {i} and {j} overlap {ratio:P0}");
+                    }
+                }
+            }
+        }
+    }
+
+    private static float OverlapRatio((Vector2 Min, Vector2 Max) a, (Vector2 Min, Vector2 Max) b)
+    {
+        float w = MathF.Min(a.Max.X, b.Max.X) - MathF.Max(a.Min.X, b.Min.X);
+        float h = MathF.Min(a.Max.Y, b.Max.Y) - MathF.Max(a.Min.Y, b.Min.Y);
+        if (w <= 0 || h <= 0) return 0f;
+        float areaA = (a.Max.X - a.Min.X) * (a.Max.Y - a.Min.Y);
+        float areaB = (b.Max.X - b.Min.X) * (b.Max.Y - b.Min.Y);
+        return w * h / MathF.Min(areaA, areaB);
+    }
+
     private static (Vector2 Min, Vector2 Max) Shrink((Vector2 Min, Vector2 Max) r, float by) => (r.Min + new Vector2(by), r.Max - new Vector2(by));
 
     [Theory]
@@ -114,10 +153,13 @@ public class LayoutTests
     {
         Assert.True(new SolarSystemLayout().Wraps);
         Assert.False(new CoverFlowLayout().Wraps);
+        Assert.Equal(1, SolarSystemLayout.AutoRingCount(2));
         Assert.Equal(1, SolarSystemLayout.AutoRingCount(5));
-        Assert.Equal(1, SolarSystemLayout.AutoRingCount(9));
-        Assert.Equal(2, SolarSystemLayout.AutoRingCount(12));
-        Assert.Equal(3, SolarSystemLayout.AutoRingCount(20));
+        Assert.Equal(2, SolarSystemLayout.AutoRingCount(6));
+        Assert.Equal(2, SolarSystemLayout.AutoRingCount(10));
+        Assert.Equal(3, SolarSystemLayout.AutoRingCount(11));
+        Assert.Equal(3, SolarSystemLayout.AutoRingCount(18));
+        Assert.Equal(4, SolarSystemLayout.AutoRingCount(19));
         Assert.Equal(4, SolarSystemLayout.AutoRingCount(40));
     }
 
