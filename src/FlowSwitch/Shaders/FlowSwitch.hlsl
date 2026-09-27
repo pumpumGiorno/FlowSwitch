@@ -403,7 +403,7 @@ float4 PSOrbit(VSOut i) : SV_Target
 
 // ───────────────────────────── glass pill (chrome) ─────────────────────────────
 //  P4 = radius, border, glass opacity, frost lod   P5 = tint rgb, accent mix
-//  P6 = accent rgb, focus glow                        P7 = centre xy (local)
+//  P6 = accent rgb, focus glow                        P7 = centre xy (local), shadow off, outline mode
 
 float4 PSPill(VSOut i) : SV_Target
 {
@@ -414,6 +414,16 @@ float4 PSPill(VSOut i) : SV_Target
     float d = SdRoundRect(L, halfSize, radius);
     float inside = 1.0 - smoothstep(-aa, aa, d);
     float2 nuv = L / (halfSize * 2.0) + 0.5;
+
+    if (P[7].w > 0.5)
+    {
+        // Outline mode (quick-switch highlight around a real window): a crisp accent hairline
+        // and a soft outer bloom, pure light, no body.
+        float edge = 1.0 - smoothstep(0.6, 0.6 + aa * 1.5, abs(d + 0.9));
+        float bloom = exp(-max(d, 0.0) / 22.0) * (1.0 - inside);
+        float3 lightColor = P[6].rgb * (edge * 0.95 + bloom * 0.55) * P[6].w * P[0].w;
+        return float4(Dither(lightColor, i.screen), 0.0);
+    }
 
     float3 tint = P[5].rgb;
     float3 accent = P[6].rgb;
@@ -432,7 +442,7 @@ float4 PSPill(VSOut i) : SV_Target
 
     float bodyA = inside * (frost ? 1.0 : P[4].z) * P[0].w;
     float outside = 1.0 - inside;
-    float shadow = GaussCoverage(SdRoundRect(L - float2(0.0, 3.0), halfSize, radius), 8.0) * 0.35;
+    float shadow = GaussCoverage(SdRoundRect(L - float2(0.0, 3.0), halfSize, radius), 8.0) * 0.35 * (1.0 - saturate(P[7].z));
     float glow = exp(-max(d, 0.0) / 10.0) * P[6].w * 0.45;
     float4 under = float4(accent * glow * outside * P[0].w, shadow * outside * P[0].w);
     return float4(Dither(glass, i.screen) * bodyA, bodyA) + under * (1.0 - bodyA);
@@ -442,9 +452,10 @@ float4 PSPill(VSOut i) : SV_Target
 //  Fullscreen passes. gViewport = target size. P0 = source texel size xy, source lod, unused.
 
 // 13-tap downsample (Jimenez 2014): a smooth, alias-free 2× reduction.
+// P1.xy = uv extent of the valid content inside the source texture.
 float4 PSDownsample(VSOut i) : SV_Target
 {
-    float2 uv = i.local;
+    float2 uv = i.local * P[1].xy;
     float2 t = P[0].xy;
     float lod = P[0].z;
     float4 a = gTex.SampleLevel(gLinear, uv + t * float2(-2, -2), lod);
@@ -470,9 +481,10 @@ float4 PSDownsample(VSOut i) : SV_Target
 
 // Area-weighted resample used to shrink captured windows to their cache size.
 // P0.xy = source texel size, P0.z = taps per axis (1..6), P0.w = footprint in source texels.
+// P1.xy = uv extent of the valid content inside the source texture.
 float4 PSResample(VSOut i) : SV_Target
 {
-    float2 uv = i.local;
+    float2 uv = i.local * P[1].xy;
     float2 t = P[0].xy;
     int taps = clamp((int)P[0].z, 1, 6);
     float footprint = P[0].w;

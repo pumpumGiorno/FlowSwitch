@@ -27,7 +27,7 @@ public readonly record struct HitResult(HitKind Kind, string? Key = null, int Su
 /// <summary>Everything the composer needs for one frame.</summary>
 public sealed class SceneInput
 {
-    public required SwitcherSession Session { get; init; }
+    public required SwitcherSession Session { get; set; }
     public required SwitcherAnimator Animator { get; init; }
     public required LayoutContext Layout { get; init; }
     public required ScenePalette Palette { get; set; }
@@ -107,6 +107,63 @@ public sealed class SceneComposer
         }
         EmitCards();
         EmitChrome();
+        return _list;
+    }
+
+    /// <summary>
+    /// The "minimal animation" for a quick Alt+Tab tap: no overlay, just a brief accent glow
+    /// tracing the frame of the window that was activated. <paramref name="t"/> runs 0 → 1.
+    /// </summary>
+    public DrawList ComposeFlash(Vector2 viewport, Vector4 windowRect, ColorF accent, float t, float scale)
+    {
+        _list.Clear();
+        _hits.Clear();
+        _frame = new FrameConstants
+        {
+            Viewport = new Vector4(viewport.X, viewport.Y, 1f / viewport.X, 1f / viewport.Y),
+            Camera = new Vector4(t, viewport.Y * 2f, viewport.X * 0.5f, viewport.Y * 0.5f),
+            Backdrop = new Vector4(1f, 1f, 0f, 0f),
+            Globals = new Vector4(0f, 0f, 1f, 0f),
+        };
+        _list.Frame = _frame;
+
+        float alpha = t < 0.22f ? Easing.Enter.Evaluate(t / 0.22f) : 1f - Easing.Soft.Evaluate((t - 0.22f) / 0.78f);
+        var center = new Vector2(windowRect.X + windowRect.Z * 0.5f, windowRect.Y + windowRect.W * 0.5f);
+        var half = new Vector2(windowRect.Z, windowRect.W) * 0.5f;
+        ref var c = ref _list.Add(ShaderKind.Pill);
+        c.P[0] = new Vector4(center, 1f, alpha);
+        c.P[1] = new Vector4(half, 60f * scale, 60f * scale);
+        c.P[4] = new Vector4(8f * scale, 0f, 0f, -1f);
+        c.P[5] = new Vector4(0f, 0f, 0f, 0f);
+        c.P[6] = new Vector4(ScenePalette.Rgb(accent), 1.1f);
+        c.P[7] = new Vector4(0f, 0f, 1f, 1f);
+        return _list;
+    }
+
+    /// <summary>A dimmed, tinted scrim for secondary monitors while the switcher is open.</summary>
+    public DrawList ComposeScrim(SceneInput input, Vector2 viewport)
+    {
+        _in = input;
+        _list.Clear();
+        var anim = input.Animator;
+        _s = DesignSpace.For(viewport).Scale;
+        _live = 1f - anim.ExitProgress;
+        _reveal = anim.BackdropReveal;
+        _frame = new FrameConstants
+        {
+            Viewport = new Vector4(viewport.X, viewport.Y, 1f / viewport.X, 1f / viewport.Y),
+            Camera = new Vector4(anim.Time, viewport.Y * 2f, viewport.X * 0.5f, viewport.Y * 0.5f),
+            Backdrop = new Vector4(1f, 1f, input.Palette.Grain, input.Palette.Oled ? 1f : 0f),
+            Globals = new Vector4(0f, 0f, 1f, input.FrameIndex % 64 / 64f),
+        };
+        _list.Frame = _frame;
+        var p = input.Palette;
+        float fade = _reveal * _live;
+        ref var c = ref _list.Add(ShaderKind.Backdrop);
+        c.P[0] = new Vector4(fade, 0f, p.Dim * fade, 0.5f * fade);
+        c.P[2] = new Vector4(viewport * 0.5f, viewport.X * 0.4f, viewport.Y * 0.5f);
+        c.P[6] = new Vector4(ScenePalette.Rgb(p.BaseTint), 0.35f);
+        c.P[7] = new Vector4(p.Grain, 0f, 0f, 0f);
         return _list;
     }
 
