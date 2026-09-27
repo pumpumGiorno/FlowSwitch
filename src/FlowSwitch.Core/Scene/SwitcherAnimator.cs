@@ -29,6 +29,8 @@ public sealed class CardVisual
     public CardPose PreviousPose;
     public CardPose FlipFrom;
     public Spring Flip;
+    /// <summary>Spring of the running layout transition (window list change, resize, restructure).</summary>
+    public SpringSpec FlipSpec = MotionProfile.Smooth.Layout;
     public Spring Presence;
     public Spring Hover;
     public Spring Satellites;
@@ -66,6 +68,17 @@ public sealed class SwitcherAnimator
     private Vector4? _exitTarget;
     private string? _exitKey;
     private float _exitStartScale = 1f;
+    private CardSizing _appliedSize;
+    private bool _sizeInitialized;
+    private int _topology;
+    private bool _hasTopology;
+    private readonly List<OrbitRing> _shownRings = new();
+    private readonly List<OrbitRing> _ringsFrom = new();
+    private Spring _ringFlip;
+    private SpringSpec _ringFlipSpec;
+
+    /// <summary>Card size changes (Settings slider, preset) glide over about 200 ms instead of snapping.</summary>
+    private static readonly SpringSpec ResizeSpring = new(0.2f, 1f);
 
     public OrbitalRotor Rotor { get; } = new();
     public OverlayPhase Phase { get; private set; } = OverlayPhase.Open;
@@ -108,7 +121,14 @@ public sealed class SwitcherAnimator
 
     public bool IsAnimating =>
         Phase != OverlayPhase.Open || !Rotor.IsSettled || _crossfading || BackdropReveal < 1f ||
-        _removed.Count > 0 || MotionHasIdle;
+        _removed.Count > 0 || MotionHasIdle || _ringFlip.Value > 0.0005f || AnyFlipping();
+
+    private bool AnyFlipping()
+    {
+        foreach (var c in _ordered)
+            if (c.Flip.Value > 0.0005f) return true;
+        return false;
+    }
 
     private bool MotionHasIdle => Motion.IdleAmount > 0 || Motion.BreathingAmplitude > 0;
 
@@ -124,6 +144,10 @@ public sealed class SwitcherAnimator
         _crossfading = false;
         _exitTarget = null;
         _exitKey = null;
+        _sizeInitialized = false;
+        _hasTopology = false;
+        _shownRings.Clear();
+        _ringFlip = new Spring(0f);
         Rotor.Reset(session.SelectionTarget);
         Rotor.MaxLag = motion.Reduced ? 0.01 : 2.6;
         _lastSessionTarget = session.SelectionTarget;
@@ -206,7 +230,22 @@ public sealed class SwitcherAnimator
         ctx.Expansion = Stage.Value;
         ctx.Time = Time;
         ctx.Parallax = Parallax.Value;
+        // A new card size is laid out at once; the cards (and orbit lines) then glide from where they
+        // are to their new places, so however the layout reorganises for the size, nothing jumps.
+        bool resized = _sizeInitialized && ctx.TargetCardSize != _appliedSize && !Motion.Reduced;
+        _appliedSize = ctx.TargetCardSize;
+        _sizeInitialized = true;
+        ctx.CardSize = _appliedSize;
         engine.Compute(ctx, _items, _layout);
+
+        // The structure changed under open cards (another orbit, other grid columns, the expanded
+        // stage re-solving the orbits): the same transition rather than a jump.
+        bool restructured = _hasTopology && _layout.Topology != _topology && !Motion.Reduced;
+        _topology = _layout.Topology;
+        _hasTopology = true;
+        SpringSpec transition = resized ? ResizeSpring : Motion.Layout;
+        if (resized || restructured) BeginRingTransition(transition);
+        BlendRings(dt);
 
         float revealTime = Time;
         for (int i = 0; i < _ordered.Count; i++)
@@ -215,8 +254,16 @@ public sealed class SwitcherAnimator
             card.PreviousPose = card.Pose;
             CardPose pose = _layout.Poses[i];
 
-            card.Flip.Step(dt, Motion.Layout);
+            if ((resized || restructured) && card.Presence.Value > 0.01f)
+            {
+                card.FlipFrom = card.Pose;
+                card.Flip = new Spring(1f) { Target = 0f };
+                card.FlipSpec = transition;
+            }
+            card.Flip.Step(dt, card.FlipSpec);
             if (card.Flip.Value > 0.0005f) pose = CardPose.Lerp(pose, card.FlipFrom, card.Flip.Value);
+            // Presence, reveal and exit scale the whole card; the typography keeps its proportion.
+            float typeRatio = pose.Scale > 1e-5f ? pose.TypeScale / pose.Scale : 1f;
 
             card.Presence.Step(dt, Motion.Presence);
             ApplyPresence(ref pose, card.Presence.Value);
@@ -230,6 +277,7 @@ public sealed class SwitcherAnimator
             card.AccentLab.Step(dt, Motion.Color);
 
             ApplyExit(ref pose, card);
+            pose.TypeScale = pose.Scale * typeRatio;
             card.Pose = pose;
         }
 
@@ -240,6 +288,7 @@ public sealed class SwitcherAnimator
             var pose = card.Pose;
             pose.Opacity = card.Presence.Value * card.PreviousPose.Opacity;
             pose.Scale = card.PreviousPose.Scale * Easing.Lerp(0.82f, 1f, card.Presence.Value);
+            pose.TypeScale = card.PreviousPose.TypeScale * Easing.Lerp(0.82f, 1f, card.Presence.Value);
             pose.PreviewSize = card.PreviousPose.PreviewSize * Easing.Lerp(0.82f, 1f, card.Presence.Value);
             card.Pose = pose;
             if (card.Presence.Value < 0.01f) _removed.RemoveAt(i);
@@ -256,6 +305,40 @@ public sealed class SwitcherAnimator
         }
 
         UpdateAmbient(session, palette, dt);
+    }
+
+    private void BeginRingTransition(SpringSpec spec)
+    {
+        _ringsFrom.Clear();
+        _ringsFrom.AddRange(_shownRings);
+        _ringFlip = new Spring(1f) { Target = 0f };
+        _ringFlipSpec = spec;
+    }
+
+    /// <summary>
+    /// Orbit lines follow a layout transition: shared orbits morph to their new radii, an added
+    /// orbit grows out of the outermost one and fades in, a dropped one fades out into it.
+    /// </summary>
+    private void BlendRings(float dt)
+    {
+        var rings = _layout.Rings;
+        if (_ringFlip.Value > 0.0005f) _ringFlip.Step(dt, _ringFlipSpec);
+        if (_ringFlip.Value > 0.0005f && _ringsFrom.Count > 0 && rings.Count > 0)
+        {
+            float f = _ringFlip.Value;
+            var to = rings.ToArray();
+            rings.Clear();
+            int count = Math.Max(to.Length, _ringsFrom.Count);
+            for (int r = 0; r < count; r++)
+            {
+                var a = r < _ringsFrom.Count ? _ringsFrom[r] : _ringsFrom[^1] with { Alpha = 0f };
+                var b = r < to.Length ? to[r] : to[^1] with { Alpha = 0f };
+                rings.Add(new OrbitRing(Vector2.Lerp(b.Center, a.Center, f), Vector2.Lerp(b.Radii, a.Radii, f),
+                    Easing.Lerp(b.Roll, a.Roll, f), Easing.Lerp(b.Alpha, a.Alpha, f), r));
+            }
+        }
+        _shownRings.Clear();
+        _shownRings.AddRange(rings);
     }
 
     private void StepSelection(float dt, SwitcherSession session)
@@ -320,6 +403,7 @@ public sealed class SwitcherAnimator
                 {
                     card.FlipFrom = card.Pose;
                     card.Flip = new Spring(1f) { Target = 0f };
+                    card.FlipSpec = Motion.Layout;
                 }
             }
             else

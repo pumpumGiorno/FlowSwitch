@@ -29,6 +29,7 @@ simply moves the target. Nothing is ever queued behind an animation that must fi
 | Presence | 240 ms, ζ 1 | cards appearing and disappearing |
 | Color | 300 ms, ζ 1 | ambient light and glow color following the selected app (~230 ms to 95%) |
 | Stage | 400 ms, ζ 0.92 | compact → expanded view |
+| Resize | 200 ms, ζ 1 | cards and orbits gliding to a new window size (~150 ms to 95%) |
 | Parallax | 600 ms, ζ 1 | pointer parallax |
 | Reveal | 200 ms, 22 ms stagger | cards unfolding when the overlay appears |
 | Reveal blur | 260 ms | backdrop blur and dimming |
@@ -80,6 +81,12 @@ teleporting.
 - **Idle.** Orbits sway by at most ±2.2° over a 22 s period, cards float by a few pixels, the
   selected card breathes by 1.2 %. It should be felt, not noticed.
 - **Hover.** +2.8 % scale, brighter edge and glow, and a tilt of at most 3° toward the pointer.
+- **Resize.** Changing the window size (Settings slider or preset) while the switcher or the
+  Settings preview is open lays the system out at the new size at once, then every card glides
+  from where it was to its new place and size, and the orbit lines morph to their new radii — an
+  orbit that is added grows out of the outermost one. Because the transition starts from what is on
+  screen, even an added orbit or a re-solved arrangement never makes a card jump; dragging the
+  slider simply keeps retargeting it. The next Alt + Tab opens directly at the new size.
 
 ## Presets
 
@@ -98,5 +105,5 @@ depth, parallax), and *Idle drift* scales the idle amount.
 
 When Windows' "Animation effects" is off, or *Reduced motion* is set to On, FlowSwitch keeps every
 state change but removes travel: no rotation, parallax, idle drift or breathing; the rotor jumps,
-and the selection **cross-fades in place** over 140 ms. Reveal and exit become short fades. The
-Settings app follows the same system setting for its own transitions.
+and the selection **cross-fades in place** over 140 ms. Reveal and exit become short fades, and a new
+window size applies at once. The Settings app follows the same system setting for its own transitions.

@@ -9,6 +9,31 @@
 
         <c:OrbitPreview Settings="{Binding Settings}" Height="280" Margin="0,22,0,0" />
 
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Window size" />
+        <c:SettingCard Header="Size" Icon="&#xE740;"
+                       Description="Quick choices for the selected window and the windows around it. Works in every layout.">
+            <Border Style="{StaticResource SegmentHost}">
+                <StackPanel x:Name="SizePresets" Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Compact" Tag="Compact" Click="OnSizePreset" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Default" Tag="Default" Click="OnSizePreset" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Large" Tag="Large" Click="OnSizePreset" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Huge" Tag="Huge" Click="OnSizePreset" />
+                </StackPanel>
+            </Border>
+        </c:SettingCard>
+        <c:SettingCard Header="Selected window size" Icon="&#xE7F4;"
+                       Description="The window you are about to switch to, in the middle. Orbits and rows make room for it; text grows only slightly.">
+            <c:SettingSlider x:Name="SelectedSizeSlider" Minimum="0.8" Maximum="1.8" SmallChange="0.05" LargeChange="0.1"
+                             TickFrequency="0.05" IsSnapToTickEnabled="True" ValueChanged="OnSizeChanged"
+                             Value="{Binding Settings.Appearance.SelectedCardSize}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Orbit window size" Icon="&#xE80A;"
+                       Description="Every other window: on the orbits, in the carousel, the stacks and the grid.">
+            <c:SettingSlider x:Name="OrbitSizeSlider" Minimum="0.5" Maximum="1.5" SmallChange="0.05" LargeChange="0.1"
+                             TickFrequency="0.05" IsSnapToTickEnabled="True" ValueChanged="OnSizeChanged"
+                             Value="{Binding Settings.Appearance.OrbitCardSize}" />
+        </c:SettingCard>
+
         <TextBlock Style="{StaticResource SectionHeaderText}" Text="Theme" />
         <c:SettingCard Header="Background" Icon="&#xE771;" Description="Auto adapts the dimming to how bright your desktop is.">
             <Border Style="{StaticResource SegmentHost}">
@@ -79,9 +104,6 @@
         </c:SettingCard>
 
         <TextBlock Style="{StaticResource SectionHeaderText}" Text="Cards" />
-        <c:SettingCard Header="Size" Icon="&#xE740;">
-            <c:SettingSlider Minimum="0.75" Maximum="1.3" Value="{Binding Settings.Appearance.CardSize}" />
-        </c:SettingCard>
         <c:SettingCard Header="Glass opacity" Icon="&#xE81E;">
             <c:SettingSlider Minimum="0.3" Maximum="1" Value="{Binding Settings.Appearance.CardOpacity}" />
         </c:SettingCard>

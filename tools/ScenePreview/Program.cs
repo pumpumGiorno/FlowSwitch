@@ -44,6 +44,25 @@ var scenarios = new List<Scenario>
     new("carousel", SwitcherMode.Carousel, 9, Captures(0.9f), Timeline()),
     new("grid", SwitcherMode.Grid, 9, Captures(0.9f), Timeline()),
     new("coverflow", SwitcherMode.CoverFlow, 9, Captures(0.9f), Timeline()),
+    // Card sizes (Appearance → Window size).
+    new("size-compact", SwitcherMode.SolarSystem, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Compact) },
+    new("size-large", SwitcherMode.SolarSystem, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Large) },
+    new("size-huge", SwitcherMode.SolarSystem, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Huge) },
+    new("size-huge-few", SwitcherMode.SolarSystem, 4, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Huge) },
+    new("size-huge-many", SwitcherMode.SolarSystem, 16, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Huge) },
+    new("size-min", SwitcherMode.SolarSystem, 9, Captures(0.9f), Timeline()) { Size = (0.8f, 0.5f) },
+    new("size-max", SwitcherMode.SolarSystem, 9, Captures(0.9f), Timeline()) { Size = (1.8f, 1.5f) },
+    new("size-focus", SwitcherMode.SolarSystem, 9, Captures(0.9f), Timeline()) { Size = (1.35f, 0.85f) },
+    new("size-spotlight", SwitcherMode.SolarSystem, 12, Captures(0.9f), Timeline()) { Size = (1.8f, 0.5f) },
+    new("size-huge-minimal", SwitcherMode.OrbitMinimal, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Huge) },
+    new("size-huge-carousel", SwitcherMode.Carousel, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Huge) },
+    new("size-huge-grid", SwitcherMode.Grid, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Huge) },
+    new("size-huge-coverflow", SwitcherMode.CoverFlow, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Huge) },
+    new("size-compact-carousel", SwitcherMode.Carousel, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Compact) },
+    new("size-compact-grid", SwitcherMode.Grid, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Compact) },
+    new("size-compact-coverflow", SwitcherMode.CoverFlow, 9, Captures(0.9f), Timeline()) { Size = Preset(CardSizePreset.Compact) },
+    // The size slider moved while the switcher is open: cards glide to the new size.
+    new("resize", SwitcherMode.SolarSystem, 9, Range(0.95f, 1.3f, fps), Timeline((1.0f, "size:Huge"))),
 };
 
 foreach (var scenario in scenarios)
@@ -59,6 +78,7 @@ static string Run(Scenario scenario, int width, int height, int fps)
     var windows = FakeDesktop.Windows(scenario.WindowCount);
     var settings = new FlowSwitchSettings();
     settings.General.Mode = scenario.Mode;
+    (settings.Appearance.SelectedCardSize, settings.Appearance.OrbitCardSize) = scenario.Size;
     var motion = MotionProfile.Resolve(settings.Animation, settings.Solar, systemPrefersReducedMotion: false);
     var quality = QualityProfile.High;
     var palette = ScenePalette.Resolve(settings.Appearance, settings.Solar, scenario.Mode);
@@ -77,7 +97,7 @@ static string Run(Scenario scenario, int width, int height, int fps)
         Solar = settings.Solar,
         Motion = motion,
         Mode = scenario.Mode,
-        CardSize = settings.Appearance.CardSize,
+        TargetCardSize = CardSizing.From(settings.Appearance),
     };
     var resources = new FakeResources(windows);
     var composer = new SceneComposer();
@@ -119,7 +139,7 @@ static string Run(Scenario scenario, int width, int height, int fps)
         while (events.Count > 0 && events.Peek().Time <= t)
         {
             var (_, action) = events.Dequeue();
-            Apply(action, session, animator);
+            Apply(action, session, ctx);
         }
         session.Tick(dt);
         while (session.TryDequeueEffect(out var effect))
@@ -145,7 +165,7 @@ static string Run(Scenario scenario, int width, int height, int fps)
     return sb.ToString();
 }
 
-static void Apply(string action, SwitcherSession session, SwitcherAnimator animator)
+static void Apply(string action, SwitcherSession session, LayoutContext ctx)
 {
     switch (action)
     {
@@ -156,10 +176,16 @@ static void Apply(string action, SwitcherSession session, SwitcherAnimator anima
         case "expand": session.CycleWithinGroup(+1); break;
         default:
             if (action.StartsWith("type:", StringComparison.Ordinal)) session.AppendQuery(action[5..]);
+            if (action.StartsWith("size:", StringComparison.Ordinal))
+            {
+                var (selected, orbit) = Preset(Enum.Parse<CardSizePreset>(action[5..]));
+                ctx.TargetCardSize = new CardSizing(selected, orbit);
+            }
             break;
     }
-    _ = animator;
 }
+
+static (float, float) Preset(CardSizePreset preset) => CardSizePresets.Values(preset);
 
 static void WriteFrame(StringBuilder sb, float t, DrawList list)
 {
@@ -222,7 +248,11 @@ static Dictionary<string, string> ParseArgs(string[] args)
     return d;
 }
 
-internal sealed record Scenario(string Name, SwitcherMode Mode, int WindowCount, List<float> Captures, List<(float Time, string Action)> Events);
+internal sealed record Scenario(string Name, SwitcherMode Mode, int WindowCount, List<float> Captures, List<(float Time, string Action)> Events)
+{
+    /// <summary>Selected and orbit card size.</summary>
+    public (float Selected, float Orbit) Size { get; init; } = (1f, 1f);
+}
 
 internal sealed class FakeResources(IReadOnlyList<WindowInfo> windows) : ISceneResources
 {

@@ -181,7 +181,7 @@ internal sealed class SwitcherController : IDisposable
         _layoutContext.Solar = _settings.Solar;
         _layoutContext.Motion = _motion;
         _layoutContext.Mode = _settings.General.Mode;
-        _layoutContext.CardSize = _settings.Appearance.CardSize;
+        _layoutContext.TargetCardSize = CardSizing.From(_settings.Appearance);
     }
 
     private static string NormalizeExe(string name) => name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name : name + ".exe";

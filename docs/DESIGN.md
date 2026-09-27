@@ -56,6 +56,53 @@ Other modes: **Orbit Minimal** (same geometry, no glow, particles or idle motion
 curved row), **Grid** (every window at once, row-major), **Cover Flow** (angled stacks with a glossy
 floor). Carousel and Cover Flow are rows: they don't wrap.
 
+## Window size
+
+<p align="center"><img src="images/window-size.jpg" alt="Compact and Huge window sizes" /><br/>
+<sub>Compact (85 / 70 %) and Huge (150 / 105 %), nine windows, same monitor.</sub></p>
+
+*Appearance → Window size* sets two sizes relative to the design: the **selected window**
+(80–180 %) and **every other window** (50–150 %), with presets Compact (85 / 70 %), Default
+(100 / 100 %), Large (125 / 90 %) and Huge (150 / 105 %). Sizes are relative to the 1600 × 900
+design space, so they mean the same share of the monitor at any resolution or DPI scaling; the
+space a monitor has beyond 16 : 9 (ultrawide, 16 : 10) is used when a large size needs it.
+
+What scales, and what doesn't:
+
+- **With the card:** preview, glass padding, corner radius, shadow, glow extent (the glow stays the
+  same size *relative* to its card), satellite dots and the mouse hit area.
+- **Barely:** typography and the info strip grow with the fourth root of the size (`CardSizing.TypeFactor`
+  — a 180 % card gets 16 % larger text, a 50 % planet 16 % smaller), so large cards read as larger
+  windows, not as zoomed-in UI. Name labels under planets and captions don't change at all.
+
+Each layout interprets the two sizes in its own way:
+
+- **Solar System / Orbit Minimal** re-solve the system for the sizes and the monitor
+  (`SolarSystemLayout.Configure`). The designed geometry — radii grown by what the cards add — is
+  used whenever it is clean; otherwise it is relaxed step by step, each only as far as needed:
+  widen all orbits (up to the monitor edge), gather the planets toward the flanks, make the orbits
+  taller, use another orbit (more are preferred to fewer), and only as a last resort shrink the
+  planets, then the selected card. "Clean" means, with every card at rest: no planet in front
+  touches the selected card or its info strip (custom sizes keep 10 units clear), planets behind it
+  tuck under its edge by at most 40 units, planets don't pile up, they keep off each other's name
+  labels, and everything — labels included — stays on screen and clear of the desktop strip. The
+  conditions are linear in the orbit radius and are solved in closed form; a solve takes well under
+  a millisecond and runs only when an input changes. At the default size nothing is relaxed: the
+  layout is exactly the designed one.
+- **Carousel** turns the first step around the cylinder as far as needed to keep the neighbours off
+  the selected card; the other steps scale with the side cards, so larger cards show fewer
+  neighbours instead of piling up.
+- **Cover Flow** moves the stacks out with the centre cover's edge, so they keep tucking under it by
+  the same share, and stands every cover on the centre cover's floor line.
+- **Grid** scales the grid (area and largest cell) with the orbit size; the selected size lifts the
+  highlighted cell further out of it, and the gaps widen so it never covers a neighbour or its name.
+
+Changes apply live (see [MOTION.md](MOTION.md#moments), *Resize*). Tests in
+`tests/FlowSwitch.Core.Tests/CardSizeTests.cs` check the minimum, default and maximum sizes, the
+presets and the lopsided extremes on seven monitor shapes from 1366 × 768 to 5120 × 1440, with
+1–30 windows, compact and expanded: the selected card is never covered, nothing leaves the screen,
+planets and labels stay apart.
+
 ## Design preview pipeline
 
 The overlay can only run on Windows, but its look is produced by platform-free code. The preview

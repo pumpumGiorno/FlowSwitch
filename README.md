@@ -36,6 +36,9 @@ by itself.
 - **Live previews** — Windows.Graphics.Capture with tiered refresh: the selected window every
   frame, neighbors ~30 fps, distant windows 8–15 fps or a still.
 - **More layouts** — Orbit Minimal, Carousel, Grid and Cover Flow.
+- **Window size** — size the selected window (80–180 %) and the others (50–150 %) separately, or pick
+  Compact, Default, Large or Huge. Orbits, rows and grids re-plan around the new size so nothing
+  overlaps or leaves the screen; text stays comfortably sized; changes glide in live.
 - **Type to search** — by app, window title or program name; works even when you type in the
   wrong keyboard layout (`вшыс` — “disc” typed on a Russian layout — finds Discord).
 - **Groups** — many windows of one app become a planet with satellites that unfold on dwell,

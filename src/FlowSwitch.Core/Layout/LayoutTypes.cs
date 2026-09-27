@@ -24,6 +24,38 @@ public readonly record struct DesignSpace(Vector2 Viewport, float Scale, Vector2
     public Vector2 ToPx(float x, float y) => Origin + new Vector2(x, y) * Scale;
     public float Px(float designUnits) => designUnits * Scale;
     public Vector2 ToDesign(Vector2 px) => (px - Origin) / Scale;
+
+    /// <summary>
+    /// Top-left corner of the monitor in design units. Negative on a side where the monitor is
+    /// wider (ultrawide) or taller (16:10) than the 16:9 design space.
+    /// </summary>
+    public Vector2 VisibleMin => Scale > 0 ? -Origin / Scale : Vector2.Zero;
+
+    /// <summary>Bottom-right corner of the monitor in design units.</summary>
+    public Vector2 VisibleMax => Scale > 0 ? (Viewport - Origin) / Scale : new Vector2(Width, Height);
+}
+
+/// <summary>
+/// The user's card sizes (Appearance → Window size): the selected card and every other card,
+/// 1 = the designed size. Each layout turns these into its own geometry.
+/// </summary>
+public readonly record struct CardSizing(float Selected, float Orbit)
+{
+    /// <summary>Text grows with the fourth root of the card size: a 180 % card gets 16 % larger text.</summary>
+    private const float TypeGrowth = 0.25f;
+
+    public static CardSizing Default => new(1f, 1f);
+
+    public static CardSizing From(AppearanceSettings appearance) => new(appearance.SelectedCardSize, appearance.OrbitCardSize);
+
+    /// <summary>The size in effect for a card with the given focus (0 = orbit, 1 = selected).</summary>
+    public float At(float focus) => Orbit + (Selected - Orbit) * Math.Clamp(focus, 0f, 1f);
+
+    /// <summary>
+    /// How much of a card's scale its typography follows. Cards are scaled by the user's size;
+    /// text is not simply magnified with them — it only grows (or shrinks) slightly.
+    /// </summary>
+    public static float TypeFactor(float size) => size > 0 && float.IsFinite(size) ? MathF.Pow(size, TypeGrowth - 1f) : 1f;
 }
 
 /// <summary>Where and how a card is drawn this frame. All lengths are in pixels.</summary>
@@ -33,8 +65,16 @@ public struct CardPose
     public Vector2 Center;
     /// <summary>Size of the live preview area (the card's glass frame surrounds it).</summary>
     public Vector2 PreviewSize;
-    /// <summary>Size relative to the fully focused centre card (drives padding, radius, text).</summary>
+    /// <summary>
+    /// Size relative to the designed centre card (500 × 300 design units). Drives padding, corner
+    /// radius, shadow and glow extents — everything that belongs to the card's geometry.
+    /// </summary>
     public float Scale;
+    /// <summary>
+    /// Scale of the card's typography and info strip. Equal to <see cref="Scale"/> at the default
+    /// card size; with a larger or smaller card size it changes much less than the card itself.
+    /// </summary>
+    public float TypeScale;
     public float Opacity;
     /// <summary>0 = nearest to the viewer, 1 = farthest.</summary>
     public float Depth;
@@ -64,6 +104,7 @@ public struct CardPose
             Center = Vector2.Lerp(a.Center, b.Center, t),
             PreviewSize = Vector2.Lerp(a.PreviewSize, b.PreviewSize, t),
             Scale = Easing.Lerp(a.Scale, b.Scale, t),
+            TypeScale = Easing.Lerp(a.TypeScale, b.TypeScale, t),
             Opacity = Easing.Lerp(a.Opacity, b.Opacity, t),
             Depth = Easing.Lerp(a.Depth, b.Depth, t),
             Focus = Easing.Lerp(a.Focus, b.Focus, t),
@@ -98,7 +139,10 @@ public sealed class LayoutContext
     public float Time;
     /// <summary>Smoothed pointer position relative to the centre, −1..1 per axis.</summary>
     public Vector2 Parallax;
-    public float CardSize = 1f;
+    /// <summary>Card sizes chosen in Settings. <see cref="Scene.SwitcherAnimator"/> eases <see cref="CardSize"/> toward it.</summary>
+    public CardSizing TargetCardSize = CardSizing.Default;
+    /// <summary>Card sizes used for this frame. Layouts read this one.</summary>
+    public CardSizing CardSize = CardSizing.Default;
     public SolarSystemSettings Solar = new();
     public MotionProfile Motion = MotionProfile.Smooth;
     public SwitcherMode Mode;
@@ -112,6 +156,11 @@ public sealed class LayoutResult
     public Vector2 Anchor;
     /// <summary>Bottom edge (px) of the focused card including its info strip — where satellites unfold.</summary>
     public float FocusBottom;
+    /// <summary>
+    /// Identifies the structure of the layout (orbit count, grid columns). When it changes while
+    /// the overlay is open, cards move to their new places with a layout transition instead of jumping.
+    /// </summary>
+    public int Topology;
 
     public void Reset(int count)
     {

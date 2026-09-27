@@ -335,7 +335,10 @@ public sealed class SceneComposer
         bool orbital = LayoutFactory.IsOrbital(_in.Layout.Mode);
         var window = card.Entry.Primary;
         var preview = _in.Resources.GetPreview(window.Handle);
+        // Geometry (padding, radius, shadow, glow) follows the card; typography and the info strip
+        // follow the type scale, which grows far less when the user enlarges the cards.
         float k = MathF.Max(pose.Scale, 0.05f);
+        float kt = pose.TypeScale > 0f ? MathF.Max(pose.TypeScale, 0.05f) : k;
         float hover = ghost ? 0f : card.Hover.Value;
         float hoverPop = 1f + 0.028f * hover * _in.Animator.Motion.ScaleIntensity;
 
@@ -349,7 +352,7 @@ public sealed class SceneComposer
         }
 
         float pad = SolarSystemLayout.CardPadding * _s * k;
-        float infoFull = orbital ? SolarSystemLayout.InfoStripHeight * _s * k : 0f;
+        float infoFull = orbital ? SolarSystemLayout.InfoStripHeight * _s * kt : 0f;
         float infoH = infoFull * pose.InfoAlpha;
         var ph = pose.PreviewSize * 0.5f;
         var outerHalf = new Vector2(ph.X + pad, ph.Y + pad + infoH * 0.5f);
@@ -399,22 +402,22 @@ public sealed class SceneComposer
             {
                 var name = Text(window.App.DisplayName, 13f * p.FontScale * _s, 500, FontFamilyKind.Text, 360f * _s);
                 EmitText(t, name, new Vector2(0f, iconSize * 0.5f + 6f * _s * k), new Vector2(0.5f, 0f),
-                    MathF.Min(1f, k / 0.34f), opacity * fallback * 0.8f * (1f - pose.Focus) * labelFree);
+                    MathF.Min(1f, kt / 0.34f), opacity * fallback * 0.8f * (1f - pose.Focus) * labelFree);
             }
             if (window.IsMinimized && pose.Focus > 0.5f)
             {
                 var min = Text("Minimized", 12f * p.FontScale * _s, 500, FontFamilyKind.Text, 200f * _s);
-                EmitText(t, min, new Vector2(-ph.X + 12f * _s * k, -ph.Y + 10f * _s * k), Vector2.Zero, k,
+                EmitText(t, min, new Vector2(-ph.X + 12f * _s * k, -ph.Y + 10f * _s * k), Vector2.Zero, kt,
                     opacity * fallback * 0.6f * pose.Focus);
             }
         }
 
         // App icon: a badge on the corner of orbiting cards that glides into the info strip as the card arrives.
         float badge = MathF.Max(20f * _s, 30f * _s * k);
-        float stripIcon = 30f * _s * k;
+        float stripIcon = 30f * _s * kt;
         float iconSizeNow = Easing.Lerp(badge, stripIcon, pose.InfoAlpha);
         var badgePos = new Vector2(-ph.X + badge * 0.42f, ph.Y - badge * 0.05f);
-        float stripCenterY = ph.Y + pad + 32f * _s * k - 4f * _s * k;
+        float stripCenterY = ph.Y + pad + 32f * _s * kt - 4f * _s * kt;
         var stripPos = new Vector2(-ph.X + 2f * _s * k + stripIcon * 0.5f, stripCenterY);
         float iconAlpha = orbital ? opacity : opacity * (1f - pose.Focus * 0.2f);
         if (fallback < 0.99f || pose.InfoAlpha > 0.01f)
@@ -425,8 +428,8 @@ public sealed class SceneComposer
         if (orbital && pose.InfoAlpha > 0.01f)
         {
             float textAlpha = opacity * pose.InfoAlpha * pose.InfoAlpha;
-            float textLeft = stripPos.X + stripIcon * 0.5f + 12f * _s * k;
-            float maxWidth = (pose.PreviewSize.X / k) - (stripIcon / k) - 150f * _s;
+            float textLeft = stripPos.X + stripIcon * 0.5f + 12f * _s * kt;
+            float maxWidth = (pose.PreviewSize.X / kt) - (stripIcon / kt) - 150f * _s;
             string subtitle = card.Entry.IsGroup && _in.Session.ExpandedGroup != card.Entry
                 ? $"{card.Entry.Windows.Count} windows · {window.Subtitle}".TrimEnd(' ', '·')
                 : window.Subtitle;
@@ -434,37 +437,38 @@ public sealed class SceneComposer
             if (subtitle.Length > 0)
             {
                 var title = Text(subtitle, 13f * p.FontScale * _s, 400, FontFamilyKind.Text, maxWidth);
-                EmitText(t, name, new Vector2(textLeft, stripCenterY - 1f * _s * k), new Vector2(0f, 1f), k, textAlpha);
-                EmitText(t, title, new Vector2(textLeft, stripCenterY + 2f * _s * k), new Vector2(0f, 0f), k, textAlpha * 0.6f);
+                EmitText(t, name, new Vector2(textLeft, stripCenterY - 1f * _s * kt), new Vector2(0f, 1f), kt, textAlpha);
+                EmitText(t, title, new Vector2(textLeft, stripCenterY + 2f * _s * kt), new Vector2(0f, 0f), kt, textAlpha * 0.6f);
             }
             else
             {
-                EmitText(t, name, new Vector2(textLeft, stripCenterY), new Vector2(0f, 0.5f), k, textAlpha);
+                EmitText(t, name, new Vector2(textLeft, stripCenterY), new Vector2(0f, 0.5f), kt, textAlpha);
             }
 
             float right = ph.X - 4f * _s * k;
             if (window.IsHung)
             {
                 var hung = Text("Not responding", 12f * p.FontScale * _s, 500, FontFamilyKind.Text, 220f * _s);
-                EmitText(t, hung, new Vector2(right, stripCenterY), new Vector2(1f, 0.5f), k, textAlpha * 0.85f,
+                EmitText(t, hung, new Vector2(right, stripCenterY), new Vector2(1f, 0.5f), kt, textAlpha * 0.85f,
                     new Vector4(1f, 0.78f, 0.45f, 1f));
-                right -= 120f * _s * k;
+                right -= 120f * _s * kt;
             }
             if (window.IsPinned)
             {
                 var pin = Text(GlyphPin, 13f * _s, 400, FontFamilyKind.Icons, 40f * _s);
-                EmitText(t, pin, new Vector2(right, stripCenterY), new Vector2(1f, 0.5f), k, textAlpha * 0.7f);
+                EmitText(t, pin, new Vector2(right, stripCenterY), new Vector2(1f, 0.5f), kt, textAlpha * 0.7f);
             }
         }
 
         // Group badge (count) on the top-left corner.
         if (card.Entry.IsGroup)
         {
-            float bw = 30f * _s * MathF.Max(k, 0.5f), bh = 20f * _s * MathF.Max(k, 0.5f);
+            float bk = MathF.Max(kt, 0.5f);
+            float bw = 30f * _s * bk, bh = 20f * _s * bk;
             var at = new Vector2(-ph.X + bw * 0.5f + 6f * _s * k, -ph.Y + bh * 0.5f + 6f * _s * k);
             EmitPill(t, at, new Vector2(bw, bh) * 0.5f, bh * 0.5f, opacity * 0.95f, accent, 0.25f);
             var count = Text($"{card.Entry.Windows.Count}", 12f * _s, 600, FontFamilyKind.Text, 60f * _s);
-            EmitText(t, count, at, new Vector2(0.5f, 0.5f), MathF.Max(k, 0.5f), opacity * 0.9f);
+            EmitText(t, count, at, new Vector2(0.5f, 0.5f), bk, opacity * 0.9f);
         }
 
         // Hover actions: close and pin.

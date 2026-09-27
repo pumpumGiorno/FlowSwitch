@@ -26,7 +26,7 @@ public class LayoutTests
     private static (Vector2 Min, Vector2 Max) CardRect(in CardPose pose, float designScale, bool withInfo)
     {
         float pad = SolarSystemLayout.CardPadding * designScale * pose.Scale;
-        float info = withInfo ? SolarSystemLayout.InfoStripHeight * designScale * pose.Scale : 0f;
+        float info = withInfo ? SolarSystemLayout.InfoStripHeight * designScale * pose.TypeScale : 0f;
         var half = pose.PreviewSize * 0.5f;
         var min = pose.Center - half - new Vector2(pad);
         var max = pose.Center + half + new Vector2(pad, pad + info);

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FlowSwitch.Core.Settings;
 
 /// <summary>
@@ -77,7 +79,19 @@ public sealed class AppearanceSettings
     public AmbientColorSource AmbientSource { get; set; } = AmbientColorSource.FromApp;
     public string AmbientCustomColor { get; set; } = "#5B6CFF";
     public float FontScale { get; set; } = 1f;
-    public float CardSize { get; set; } = 1f;
+
+    /// <summary>Size of the selected (centre) window's card, 1 = the designed size.</summary>
+    public float SelectedCardSize { get; set; } = 1f;
+
+    /// <summary>Size of every other card (orbits, rows, grid cells), 1 = the designed size.</summary>
+    public float OrbitCardSize { get; set; } = 1f;
+
+    /// <summary>Single card size of settings files written before the two sizes existed; migrated on load.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public float? CardSize { get; set; }
+
+    public const float MinSelectedCardSize = 0.8f, MaxSelectedCardSize = 1.8f;
+    public const float MinOrbitCardSize = 0.5f, MaxOrbitCardSize = 1.5f;
 
     internal void Normalize()
     {
@@ -91,7 +105,13 @@ public sealed class AppearanceSettings
         OrbitVisibility = FlowSwitchSettings.Clamp01(OrbitVisibility);
         ParticleIntensity = FlowSwitchSettings.Clamp01(ParticleIntensity);
         FontScale = FlowSwitchSettings.ClampF(FontScale, 0.8f, 1.4f, 1f);
-        CardSize = FlowSwitchSettings.ClampF(CardSize, 0.75f, 1.3f, 1f);
+        if (CardSize is { } legacy)
+        {
+            SelectedCardSize = OrbitCardSize = legacy;
+            CardSize = null;
+        }
+        SelectedCardSize = FlowSwitchSettings.ClampF(SelectedCardSize, MinSelectedCardSize, MaxSelectedCardSize, 1f);
+        OrbitCardSize = FlowSwitchSettings.ClampF(OrbitCardSize, MinOrbitCardSize, MaxOrbitCardSize, 1f);
         AmbientCustomColor ??= "#5B6CFF";
     }
 }

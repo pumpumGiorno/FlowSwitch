@@ -141,7 +141,7 @@ public sealed class OrbitPreview : FrameworkElement
         _palette = ScenePalette.Resolve(settings.Appearance, settings.Solar, mode);
         _ctx.Solar = settings.Solar;
         _ctx.Motion = motion;
-        _ctx.CardSize = settings.Appearance.CardSize;
+        _ctx.TargetCardSize = CardSizing.From(settings.Appearance);
 
         if (mode != _mode || force)
         {
@@ -232,6 +232,9 @@ public sealed class OrbitPreview : FrameworkElement
         while (_session.TryDequeueEffect(out _)) { }
 
         _ctx.Space = DesignSpace.For(new Vector2((float)ActualWidth, (float)ActualHeight));
+        // Read every frame (not only on the periodic refresh) so a dragged size slider responds at
+        // once; the animator eases the cards to the new size.
+        if (Settings is { } current) _ctx.TargetCardSize = CardSizing.From(current.Appearance);
         bool parallax = (Settings?.Solar.Parallax ?? true) && !_ctx.Motion.Reduced;
         _animator.Update(dt, _session, _engine, _ctx, _resources, _palette, parallax ? _pointer : null);
         InvalidateVisual();
@@ -461,10 +464,12 @@ public sealed class OrbitPreview : FrameworkElement
         bool orbital = LayoutFactory.IsOrbital(_mode);
         float s = _ctx.Space.Scale;
         float k = MathF.Max(pose.Scale, 0.05f);
+        // Typography follows the type scale: it grows much less than the card when the user enlarges it.
+        float kt = pose.TypeScale > 0f ? MathF.Max(pose.TypeScale, 0.05f) : k;
         float hoverPop = 1f + 0.028f * card.Hover.Value * _ctx.Motion.ScaleIntensity;
 
         float pad = SolarSystemLayout.CardPadding * s * k;
-        float infoH = (orbital ? SolarSystemLayout.InfoStripHeight * s * k : 0f) * pose.InfoAlpha;
+        float infoH = (orbital ? SolarSystemLayout.InfoStripHeight * s * kt : 0f) * pose.InfoAlpha;
         var ph = pose.PreviewSize * 0.5f * hoverPop;
         var outerHalf = new Vector2(ph.X + pad, ph.Y + pad + infoH * 0.5f);
         var outerOffset = new Vector2(0f, infoH * 0.5f);
@@ -504,21 +509,21 @@ public sealed class OrbitPreview : FrameworkElement
         if (orbital && pose.InfoAlpha > 0.02f)
         {
             dc.PushOpacity(pose.InfoAlpha);
-            float icon = 30f * s * k;
-            var iconCenter = ProjectPoint(pose, new Vector2(-ph.X + 2f * s * k + icon * 0.5f, ph.Y + pad + 28f * s * k));
+            float icon = 30f * s * kt;
+            var iconCenter = ProjectPoint(pose, new Vector2(-ph.X + 2f * s * k + icon * 0.5f, ph.Y + pad + 28f * s * kt));
             DrawAppBadge(dc, iconCenter, icon, accent, window.App.DisplayName);
-            double fontName = 15 * s * k * _palette.FontScale;
-            double fontTitle = 12 * s * k * _palette.FontScale;
+            double fontName = 15 * s * kt * _palette.FontScale;
+            double fontTitle = 12 * s * kt * _palette.FontScale;
             var name = Text(window.App.DisplayName, fontName, 600, TextPrimary);
             var title = Text(window.Title, fontTitle, 400, TextSecondary);
-            double maxW = Math.Max(10, ph.X * 2 - icon - 14 * s * k);
+            double maxW = Math.Max(10, ph.X * 2 - icon - 14 * s * kt);
             name.MaxTextWidth = maxW;
             title.MaxTextWidth = maxW;
             name.MaxLineCount = 1;
             title.MaxLineCount = 1;
             name.Trimming = TextTrimming.CharacterEllipsis;
             title.Trimming = TextTrimming.CharacterEllipsis;
-            double x = iconCenter.X + icon * 0.5 + 12 * s * k;
+            double x = iconCenter.X + icon * 0.5 + 12 * s * kt;
             dc.DrawText(name, new Point(x, iconCenter.Y - name.Height + 1 * s));
             dc.DrawText(title, new Point(x, iconCenter.Y + 2 * s));
             dc.Pop();
@@ -534,7 +539,7 @@ public sealed class OrbitPreview : FrameworkElement
         // Group count.
         if (card.Entry.IsGroup)
         {
-            var countText = Text("×" + card.Entry.Windows.Count.ToString(CultureInfo.CurrentCulture), 11 * s * Math.Max(k, 0.6), 600, TextPrimary);
+            var countText = Text("×" + card.Entry.Windows.Count.ToString(CultureInfo.CurrentCulture), 11 * s * Math.Max(kt, 0.6), 600, TextPrimary);
             var at = ProjectPoint(pose, new Vector2(ph.X - 8f * s * k, -ph.Y + 8f * s * k));
             dc.DrawText(countText, new Point(at.X - countText.Width, at.Y));
         }
