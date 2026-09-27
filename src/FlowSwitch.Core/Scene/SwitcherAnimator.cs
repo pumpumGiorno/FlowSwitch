@@ -57,6 +57,7 @@ public sealed class SwitcherAnimator
     private LayoutItem[] _items = Array.Empty<LayoutItem>();
     private string[] _keys = Array.Empty<string>();
     private int _layoutVersion = -1;
+    private bool _wraps = true;
     private long _lastSessionTarget;
     private Tween _revealBackdrop;
     private Tween _exit;
@@ -178,6 +179,8 @@ public sealed class SwitcherAnimator
         Motion = ctx.Motion;
 
         SyncEntries(session, initial: false);
+        _wraps = engine.Wraps;
+        Rotor.MaxLag = Motion.Reduced ? 0.01 : _wraps ? 2.6 : Math.Max(2.6, session.Entries.Count);
         StepSelection(dt, session);
 
         Stage.Step(session.Stage == SessionStage.Expanded ? 1f : 0f, dt, Motion.Stage);
@@ -261,18 +264,17 @@ public sealed class SwitcherAnimator
         _lastSessionTarget = session.SelectionTarget;
         if (delta != 0)
         {
+            // Rings keep turning the same way across the wrap; rows travel directly to the index.
+            if (_wraps) Rotor.Advance((int)delta);
+            else Rotor.SetTarget(Math.Max(0, session.SelectedIndex));
+
             if (Motion.Reduced)
             {
                 // Reduced motion: no travel. Snapshot the current poses and cross-fade in place.
                 foreach (var c in _ordered) { c.GhostPose = c.Pose; c.HasGhost = true; }
-                Rotor.Advance((int)delta);
                 Rotor.Reset(Rotor.Target);
                 _crossfade = new Tween(Motion.CrossfadeDuration, Easing.Standard);
                 _crossfading = true;
-            }
-            else
-            {
-                Rotor.Advance((int)delta);
             }
         }
         Rotor.Step(dt, Motion.Rotor);
@@ -298,7 +300,8 @@ public sealed class SwitcherAnimator
         if (sameKeys && !initial)
         {
             for (int i = 0; i < entries.Count; i++) _ordered[i].Entry = entries[i];
-            Rotor.SeekTo(session.SelectedIndex, entries.Count);
+            if (_wraps) Rotor.SeekTo(session.SelectedIndex, entries.Count);
+            else Rotor.SetTarget(Math.Max(0, session.SelectedIndex));
             _lastSessionTarget = session.SelectionTarget;
             return;
         }

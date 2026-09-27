@@ -76,6 +76,13 @@ internal sealed unsafe class Renderer : ISceneResources, IDisposable
 
     public void Render(ID3D11RenderTargetView target, int width, int height, DrawList list, bool useBackdrop)
     {
+        // Rasterise new text first: Direct2D draws through the same device and may change
+        // pipeline state, so it must not run between our draw calls.
+        foreach (ref readonly var cmd in list.Commands)
+        {
+            if (cmd.Texture.Kind == TextureKind.Text && cmd.Texture.Text is { } spec) Text.Get(spec);
+        }
+
         var ctx = _gfx.Context;
         ctx.OMSetRenderTargets(target, null);
         ctx.RSSetViewport(0f, 0f, width, height, 0f, 1f);

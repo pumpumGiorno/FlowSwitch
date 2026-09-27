@@ -16,6 +16,8 @@ public sealed class CoverFlowLayout : ILayoutEngine
 
     public SwitcherMode Mode => SwitcherMode.CoverFlow;
 
+    public bool Wraps => false;
+
     public void Compute(LayoutContext ctx, ReadOnlySpan<LayoutItem> items, LayoutResult result)
     {
         int n = items.Length;
@@ -33,7 +35,8 @@ public sealed class CoverFlowLayout : ILayoutEngine
         for (int i = 0; i < n; i++)
         {
             ref CardPose pose = ref result.Poses[i];
-            double d = n == 1 ? 0 : OrbitalRotor.WrapOffset(i - ctx.RotorPosition, n);
+            // A row, not a ring: going past the last window scrolls back instead of wrapping.
+            double d = i - ctx.RotorPosition;
             float a = (float)Math.Abs(d);
             float sign = MathF.Sign((float)d);
             float t = Easing.Smootherstep(Math.Min(1f, a));

@@ -69,6 +69,8 @@ public sealed class SolarSystemLayout : ILayoutEngine
 
     public SwitcherMode Mode { get; }
 
+    public bool Wraps => true;
+
     public static int AutoRingCount(int windowCount)
     {
         int others = windowCount - 1;

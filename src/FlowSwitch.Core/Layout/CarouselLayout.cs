@@ -14,6 +14,8 @@ public sealed class CarouselLayout : ILayoutEngine
 
     public SwitcherMode Mode => SwitcherMode.Carousel;
 
+    public bool Wraps => false;
+
     public void Compute(LayoutContext ctx, ReadOnlySpan<LayoutItem> items, LayoutResult result)
     {
         int n = items.Length;
@@ -31,7 +33,8 @@ public sealed class CarouselLayout : ILayoutEngine
         for (int i = 0; i < n; i++)
         {
             ref CardPose pose = ref result.Poses[i];
-            double d = n == 1 ? 0 : OrbitalRotor.WrapOffset(i - ctx.RotorPosition, n);
+            // A row, not a ring: going past the last window scrolls back instead of wrapping.
+            double d = i - ctx.RotorPosition;
             float a = (float)Math.Abs(d);
             float theta = (float)d * step;
             float at = MathF.Abs(theta);

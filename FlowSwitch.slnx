@@ -3,6 +3,9 @@
     <Project Path="src/FlowSwitch.Core/FlowSwitch.Core.csproj" />
     <Project Path="src/FlowSwitch/FlowSwitch.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FlowSwitch.Core.Tests/FlowSwitch.Core.Tests.csproj" />
+  </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/ScenePreview/ScenePreview.csproj" />
   </Folder>

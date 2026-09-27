@@ -124,6 +124,12 @@ public interface ILayoutEngine
 {
     SwitcherMode Mode { get; }
 
+    /// <summary>
+    /// True for ring-like layouts where going past the last item continues to the first.
+    /// False for rows (Carousel, Cover Flow): the rotor then moves directly between indices.
+    /// </summary>
+    bool Wraps { get; }
+
     void Compute(LayoutContext context, ReadOnlySpan<LayoutItem> items, LayoutResult result);
 }
 

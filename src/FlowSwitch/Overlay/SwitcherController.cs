@@ -114,7 +114,7 @@ internal sealed class SwitcherController : IDisposable
     public bool WantsFrames => _state != State.Idle || Now < _prewarmUntil;
 
     /// <summary>Handle the render loop waits on (0 → use a short timeout).</summary>
-    public nint FrameWaitable => _state is State.Visible or State.Closing or State.Flash && _primary is { IsVisible: true } p ? p.FrameLatencyWaitable : 0;
+    public nint FrameWaitable => _state is State.Visible or State.Closing or State.Flash && _primary is { } p ? p.FrameLatencyWaitable : 0;
 
     private double Now => _clock.Elapsed.TotalSeconds;
 
@@ -394,7 +394,7 @@ internal sealed class SwitcherController : IDisposable
             }
 
             var s = _session!;
-            if (_state == State.Pending && now >= _revealAt) Reveal();
+            if (_state == State.Pending && now >= _revealAt) Reveal(s);
 
             // Safety net: Alt is up but no commit arrived (e.g. released on the secure desktop).
             if (s.Mode != SessionMode.Sticky && s.Outcome == SessionOutcome.Open && !IsKeyDown(VK_MENU) && now - _sessionStart > 0.05)
@@ -417,13 +417,18 @@ internal sealed class SwitcherController : IDisposable
 
             PumpCaptures(now);
 
+            // Nothing animates while the overlay is still hidden: the entrance starts when it appears.
+            if (_state == State.Pending) return;
+
             Vector2? normalized = null;
             if (_pointer is { } p && _primary is not null)
                 normalized = new Vector2(p.X / _primary.Width * 2f - 1f, p.Y / _primary.Height * 2f - 1f);
             _animator.HoveredKey = _pointer is { } hp && _state == State.Visible ? HoverKey(_composer.HitTest(hp)) : null;
             _animator.Update(dt, s, _layout, _layoutContext, _renderer!, _palette, normalized);
 
-            if (_state is State.Visible or State.Closing) Draw(now, dt);
+            Draw(now, dt);
+            // Show the windows only after their first frame is presented, so no stale content flashes.
+            if (_primary is { IsVisible: false }) ShowOverlays();
             if (_animator.IsFinished) FinishSession(immediate: false);
         }
         catch (Exception ex)
@@ -465,14 +470,21 @@ internal sealed class SwitcherController : IDisposable
         TrackFrameTime(dt);
     }
 
-    private void Reveal()
+    private void Reveal(SwitcherSession session)
     {
         if (_primary is null) return;
-        _primary.Show();
-        foreach (var o in _secondary) o.Show();
+        // Restart the animation state from the current selection (Tab may have been pressed
+        // several times while the overlay was still pending).
+        _animator.Begin(session, _motion);
         _state = State.Visible;
         OverlayVisible = true;
         _pointerAtReveal = GetCursorOnOverlay() ?? Vector2.Zero;
+    }
+
+    private void ShowOverlays()
+    {
+        _primary?.Show();
+        foreach (var o in _secondary) o.Show();
     }
 
     private void ProcessEffects()
@@ -819,7 +831,6 @@ internal sealed class SwitcherController : IDisposable
         _flashAccent = target.Accent;
         _flashStart = Now;
         _state = State.Flash;
-        _primary.Show();
         OverlayVisible = true;
     }
 
@@ -838,6 +849,7 @@ internal sealed class SwitcherController : IDisposable
         var list = _composer.ComposeFlash(new Vector2(_primary.Width, _primary.Height), _flashRect, _flashAccent, t, scale);
         _renderer!.Render(_primary.RenderTarget, _primary.Width, _primary.Height, list, useBackdrop: false);
         _primary.Present(vsync: true);
+        if (!_primary.IsVisible) _primary.Show();
     }
 
     // ═════════════════════════════════════ policy ═════════════════════════════════════

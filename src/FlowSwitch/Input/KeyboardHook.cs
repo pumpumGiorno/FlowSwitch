@@ -27,6 +27,7 @@ internal sealed unsafe class KeyboardHook : IDisposable
 {
     private const uint WmInjectDummy = WM_APP + 20;
     private const uint WmReinstall = WM_APP + 21;
+    private const uint WmReplayNative = WM_APP + 22;
     private const int HeartbeatStaleMs = 700;
     private const uint HealthIntervalMs = 100;
     private const uint ReinstallIntervalMs = 60_000;
@@ -103,6 +104,9 @@ internal sealed unsafe class KeyboardHook : IDisposable
                         break;
                     case WmReinstall:
                         if (!_bridge.IsSessionActive) Reinstall();
+                        break;
+                    case WmReplayNative:
+                        ReplayToNative(reverse: false);
                         break;
                     default:
                         TranslateMessage(msg);
@@ -304,10 +308,13 @@ internal sealed unsafe class KeyboardHook : IDisposable
 
     private void Abort(int id, string reason)
     {
+        bool wasActive = _bridge.State == HookBridge.StateActive;
         _bridge.EndSession(id);
         _bridge.MarkUnhealthy();
         PostMessageW(_bridge.TargetWindow, HookMessages.Abort, 0, id);
         StopHealthTimer();
+        // The user is still holding Alt: let Windows' own switcher take over from here.
+        if (wasActive && IsKeyDown(VK_MENU)) PostThreadMessageW(_threadId, WmReplayNative, 0, 0);
         Log.Warn($"Session {id} aborted by keyboard hook: {reason}.");
     }
 

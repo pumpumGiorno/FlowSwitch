@@ -16,6 +16,8 @@ public sealed class GridLayout : ILayoutEngine
 
     public SwitcherMode Mode => SwitcherMode.Grid;
 
+    public bool Wraps => true;
+
     public void Compute(LayoutContext ctx, ReadOnlySpan<LayoutItem> items, LayoutResult result)
     {
         int n = items.Length;

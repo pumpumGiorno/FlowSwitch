@@ -43,6 +43,9 @@ public sealed class OrbitalRotor
     /// <summary>Moves the logical selection by <paramref name="delta"/> items.</summary>
     public void Advance(int delta) => Target += delta;
 
+    /// <summary>Sets an absolute target (non-wrapping layouts).</summary>
+    public void SetTarget(long target) => Target = target;
+
     /// <summary>Jumps the logical selection to the nearest unwrapped equivalent of <paramref name="index"/>.</summary>
     public void SeekTo(int index, int count)
     {
