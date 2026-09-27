@@ -1,0 +1,137 @@
+<UserControl x:Class="FlowSwitch.Settings.Pages.HotkeysPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:FlowSwitch.Settings.Controls">
+    <UserControl.Resources>
+        <Style x:Key="Key" TargetType="Border" BasedOn="{StaticResource KeyCapText}" />
+        <Style x:Key="KeyText" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource TextFont}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        </Style>
+        <Style x:Key="Plus" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Text" Value="+" />
+        </Style>
+    </UserControl.Resources>
+    <StackPanel>
+        <TextBlock Style="{StaticResource PageTitleText}" Text="Hotkeys" />
+        <TextBlock Style="{StaticResource PageSubtitleText}"
+                   Text="FlowSwitch keeps the Windows keys you already know. Turn off any shortcut you would rather leave to Windows or to your apps." />
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Opening the switcher" />
+        <c:SettingCard Header="Switch windows" Description="Hold Alt and press Tab to move forward; release Alt to open the window.">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Alt" /></Border>
+                <TextBlock Style="{StaticResource Plus}" />
+                <Border Style="{StaticResource Key}" Margin="0,0,24,0"><TextBlock Style="{StaticResource KeyText}" Text="Tab" /></Border>
+                <c:ToggleSwitch IsChecked="{Binding Settings.Hotkeys.AltTab}" />
+            </StackPanel>
+        </c:SettingCard>
+        <c:SettingCard Header="Switch backwards" Description="Rotates the system the other way.">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Alt" /></Border>
+                <TextBlock Style="{StaticResource Plus}" />
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Shift" /></Border>
+                <TextBlock Style="{StaticResource Plus}" />
+                <Border Style="{StaticResource Key}" Margin="0,0,24,0"><TextBlock Style="{StaticResource KeyText}" Text="Tab" /></Border>
+                <c:ToggleSwitch IsChecked="{Binding Settings.Hotkeys.AltShiftTabReverse}" />
+            </StackPanel>
+        </c:SettingCard>
+        <c:SettingCard Header="Keep the switcher open" Description="Opens a switcher that stays until you pick a window or press Esc.">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl" /></Border>
+                <TextBlock Style="{StaticResource Plus}" />
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Alt" /></Border>
+                <TextBlock Style="{StaticResource Plus}" />
+                <Border Style="{StaticResource Key}" Margin="0,0,24,0"><TextBlock Style="{StaticResource KeyText}" Text="Tab" /></Border>
+                <c:ToggleSwitch IsChecked="{Binding Settings.Hotkeys.CtrlAltTabSticky}" />
+            </StackPanel>
+        </c:SettingCard>
+        <c:SettingCard Header="Windows of the current app" Description="Cycles only through the windows of the app you are in.">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Alt" /></Border>
+                <TextBlock Style="{StaticResource Plus}" />
+                <Border Style="{StaticResource Key}" Margin="0,0,24,0"><TextBlock Style="{StaticResource KeyText}" Text="`" /></Border>
+                <c:ToggleSwitch IsChecked="{Binding Settings.Hotkeys.AltBacktickSameApp}" />
+            </StackPanel>
+        </c:SettingCard>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="While the switcher is open" />
+        <c:SettingCard Header="Close the selected window" Description="Asks the window to close, exactly like its close button.">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl" /></Border>
+                <TextBlock Style="{StaticResource Plus}" />
+                <Border Style="{StaticResource Key}" Margin="0,0,24,0"><TextBlock Style="{StaticResource KeyText}" Text="W" /></Border>
+                <c:ToggleSwitch IsChecked="{Binding Settings.Hotkeys.CtrlWCloses}" />
+            </StackPanel>
+        </c:SettingCard>
+        <c:SettingCard Header="Close with Delete">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Key}" Margin="0,0,24,0"><TextBlock Style="{StaticResource KeyText}" Text="Delete" /></Border>
+                <c:ToggleSwitch IsChecked="{Binding Settings.Hotkeys.DeleteCloses}" />
+            </StackPanel>
+        </c:SettingCard>
+        <c:SettingCard Header="Arrow keys" Description="Left and right rotate; up and down step through a group's windows.">
+            <StackPanel Orientation="Horizontal">
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="←" /></Border>
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="→" /></Border>
+                <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="↑" /></Border>
+                <Border Style="{StaticResource Key}" Margin="0,0,24,0"><TextBlock Style="{StaticResource KeyText}" Text="↓" /></Border>
+                <c:ToggleSwitch IsChecked="{Binding Settings.Hotkeys.ArrowNavigation}" />
+            </StackPanel>
+        </c:SettingCard>
+        <c:SettingCard Header="Mouse wheel" Description="Scroll to rotate the system.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.Hotkeys.WheelNavigation}" />
+        </c:SettingCard>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Always available" />
+        <Border Style="{StaticResource GlassPanel}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="200" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal" Margin="0,4">
+                    <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Esc" /></Border>
+                </StackPanel>
+                <TextBlock Grid.Column="1" Style="{StaticResource CaptionText}" VerticalAlignment="Center" Text="Cancel and return to where you were" />
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,4">
+                    <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Enter" /></Border>
+                </StackPanel>
+                <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource CaptionText}" VerticalAlignment="Center" Text="Open the selected window" />
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,4">
+                    <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Type" /></Border>
+                </StackPanel>
+                <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource CaptionText}" VerticalAlignment="Center"
+                           Text="Search by app, window title or program name (also works in the other keyboard layout)" />
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,4">
+                    <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Backspace" /></Border>
+                </StackPanel>
+                <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource CaptionText}" VerticalAlignment="Center" Text="Edit the search" />
+                <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,4">
+                    <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Home" /></Border>
+                    <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="End" /></Border>
+                </StackPanel>
+                <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource CaptionText}" VerticalAlignment="Center" Text="Jump to the first or last window" />
+                <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,4">
+                    <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="Ctrl" /></Border>
+                    <TextBlock Style="{StaticResource Plus}" />
+                    <Border Style="{StaticResource Key}"><TextBlock Style="{StaticResource KeyText}" Text="P" /></Border>
+                </StackPanel>
+                <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource CaptionText}" VerticalAlignment="Center" Text="Pin the selected window to the front of the list" />
+            </Grid>
+        </Border>
+    </StackPanel>
+</UserControl>

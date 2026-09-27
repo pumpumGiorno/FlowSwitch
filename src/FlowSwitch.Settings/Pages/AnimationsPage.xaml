@@ -1,0 +1,108 @@
+<UserControl x:Class="FlowSwitch.Settings.Pages.AnimationsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:FlowSwitch.Settings.Controls">
+    <StackPanel>
+        <TextBlock Style="{StaticResource PageTitleText}" Text="Animations" />
+        <TextBlock Style="{StaticResource PageSubtitleText}"
+                   Text="Responsive first, cinematic second. Every motion is a spring, so quick presses never wait for an animation to finish." />
+
+        <Grid Margin="0,22,0,0">
+            <c:OrbitPreview x:Name="Preview" Settings="{Binding Settings}" Height="280" />
+            <Button Style="{StaticResource ButtonBase}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,12,0" Click="OnReplay"
+                    Background="#990A0D14" Padding="12,5" MinHeight="30">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE72C;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" Margin="0,1,8,0" />
+                    <TextBlock Text="Replay" FontSize="13" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Style" />
+        <WrapPanel>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE7AD;" Width="164"
+                         IsChecked="{Binding Settings.Animation.Preset, Converter={StaticResource EnumBool}, ConverterParameter=Smooth}">
+                <StackPanel>
+                    <TextBlock Text="Smooth" FontWeight="SemiBold" />
+                    <TextBlock Text="Balanced springs. The default." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE945;" Width="164"
+                         IsChecked="{Binding Settings.Animation.Preset, Converter={StaticResource EnumBool}, ConverterParameter=Snappy}">
+                <StackPanel>
+                    <TextBlock Text="Snappy" FontWeight="SemiBold" />
+                    <TextBlock Text="Quick and crisp." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE714;" Width="164"
+                         IsChecked="{Binding Settings.Animation.Preset, Converter={StaticResource EnumBool}, ConverterParameter=Cinematic}">
+                <StackPanel>
+                    <TextBlock Text="Cinematic" FontWeight="SemiBold" />
+                    <TextBlock Text="Slower, deeper, more light." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE738;" Width="164"
+                         IsChecked="{Binding Settings.Animation.Preset, Converter={StaticResource EnumBool}, ConverterParameter=Minimal}">
+                <StackPanel>
+                    <TextBlock Text="Minimal" FontWeight="SemiBold" />
+                    <TextBlock Text="Short fades, little motion." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE70F;" Width="164"
+                         IsChecked="{Binding Settings.Animation.Preset, Converter={StaticResource EnumBool}, ConverterParameter=Custom}">
+                <StackPanel>
+                    <TextBlock Text="Custom" FontWeight="SemiBold" />
+                    <TextBlock Text="Tune the springs yourself." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+        </WrapPanel>
+
+        <StackPanel IsEnabled="{Binding Settings.Animation.Preset, Converter={StaticResource EqualsBool}, ConverterParameter=Custom}">
+            <TextBlock Style="{StaticResource SectionHeaderText}" Text="Custom timing" />
+            <c:SettingCard Header="Duration" Icon="&#xE916;" Description="Scales every animation. Lower is faster.">
+                <c:SettingSlider Minimum="0.5" Maximum="1.8" Format="Multiplier" Value="{Binding Settings.Animation.DurationScale}" />
+            </c:SettingCard>
+            <c:SettingCard Header="Spring stiffness" Icon="&#xE945;" Description="Soft springs glide; stiff springs snap into place.">
+                <c:SettingSlider Value="{Binding Settings.Animation.SpringStiffness}" />
+            </c:SettingCard>
+            <c:SettingCard Header="Damping" Icon="&#xE7AD;" Description="1.00 settles without any overshoot; lower values bounce slightly.">
+                <c:SettingSlider Minimum="0.6" Maximum="1" Format="Decimal" Value="{Binding Settings.Animation.SpringDamping}" />
+            </c:SettingCard>
+        </StackPanel>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Intensity" />
+        <c:SettingCard Header="Scale" Icon="&#xE740;" Description="How much cards grow and shrink as they move.">
+            <c:SettingSlider Minimum="0" Maximum="1.5" Value="{Binding Settings.Animation.ScaleIntensity}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Rotation" Icon="&#xE8AB;">
+            <c:SettingSlider Minimum="0" Maximum="1.5" Value="{Binding Settings.Animation.RotationIntensity}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Depth" Icon="&#xE81E;">
+            <c:SettingSlider Minimum="0" Maximum="1.5" Value="{Binding Settings.Animation.DepthIntensity}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Parallax" Icon="&#xE962;">
+            <c:SettingSlider Value="{Binding Settings.Animation.Parallax}" />
+        </c:SettingCard>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Effects" />
+        <c:SettingCard Header="Motion trails" Icon="&#xE945;" Description="A soft streak of light behind cards during fast rotation.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.Animation.MotionBlur}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Breathing" Icon="&#xE706;" Description="The selected window gently breathes by about one percent.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.Animation.Breathing}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Reduced motion" Icon="&#xE7B3;"
+                       Description="Replaces movement with short cross-fades. By default this follows the Windows animation setting.">
+            <Border Style="{StaticResource SegmentHost}">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Follow Windows"
+                                 IsChecked="{Binding Settings.Animation.ReducedMotion, Converter={StaticResource EnumBool}, ConverterParameter=FollowSystem}" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="On"
+                                 IsChecked="{Binding Settings.Animation.ReducedMotion, Converter={StaticResource EnumBool}, ConverterParameter=On}" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Off"
+                                 IsChecked="{Binding Settings.Animation.ReducedMotion, Converter={StaticResource EnumBool}, ConverterParameter=Off}" />
+                </StackPanel>
+            </Border>
+        </c:SettingCard>
+    </StackPanel>
+</UserControl>

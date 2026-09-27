@@ -1,0 +1,50 @@
+<UserControl x:Class="FlowSwitch.Settings.Pages.AboutPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:FlowSwitch.Settings.Controls">
+    <StackPanel>
+        <Border Style="{StaticResource GlassPanel}" Padding="28" Margin="0,8,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid Width="112" Height="112" Margin="0,0,28,0">
+                    <Ellipse Margin="-10">
+                        <Ellipse.Fill>
+                            <RadialGradientBrush>
+                                <GradientStop Offset="0" Color="#447A84FF" />
+                                <GradientStop Offset="1" Color="#007A84FF" />
+                            </RadialGradientBrush>
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <Image Source="pack://application:,,,/Assets/flowswitch-256.png" RenderOptions.BitmapScalingMode="HighQuality" />
+                </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource PageTitleText}" Text="FlowSwitch" FontSize="34" />
+                    <TextBlock Style="{StaticResource PageSubtitleText}" Text="Your windows. In motion." FontSize="16" Margin="0,2,0,0" />
+                    <TextBlock x:Name="VersionText" Style="{StaticResource CaptionText}" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,12,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="How it works" />
+        <Border Style="{StaticResource GlassPanel}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource BodyText}" Foreground="{StaticResource TextSecondaryBrush}" LineHeight="21"
+                           Text="FlowSwitch replaces the look of Alt + Tab, not what it does. The order of your windows, which one is active and how Windows focuses them stay exactly as Windows keeps them." />
+                <TextBlock Style="{StaticResource BodyText}" Foreground="{StaticResource TextSecondaryBrush}" LineHeight="21" Margin="0,10,0,0"
+                           Text="The switcher is drawn with Direct3D 11 and DirectComposition, and live previews come from Windows.Graphics.Capture. While it is closed FlowSwitch captures nothing and uses no GPU at all." />
+                <TextBlock Style="{StaticResource BodyText}" Foreground="{StaticResource TextSecondaryBrush}" LineHeight="21" Margin="0,10,0,0"
+                           Text="If FlowSwitch ever stops responding, Windows' own Alt + Tab takes over within a fraction of a second — you are never left without a way to switch." />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="More" />
+        <c:SettingCard Header="Welcome tour" Icon="&#xE768;" Description="See the introduction again.">
+            <Button Content="Show" Click="OnShowTour" />
+        </c:SettingCard>
+        <c:SettingCard Header="Tray icon" Icon="&#xE946;"
+                       Description="Right-click the FlowSwitch icon in the notification area to pause it for an hour, restart it or exit." />
+    </StackPanel>
+</UserControl>

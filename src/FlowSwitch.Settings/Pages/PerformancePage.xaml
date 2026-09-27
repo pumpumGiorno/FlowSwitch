@@ -1,0 +1,72 @@
+<UserControl x:Class="FlowSwitch.Settings.Pages.PerformancePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:FlowSwitch.Settings.Controls">
+    <StackPanel>
+        <TextBlock Style="{StaticResource PageTitleText}" Text="Performance" />
+        <TextBlock Style="{StaticResource PageSubtitleText}"
+                   Text="FlowSwitch uses no GPU while it is closed. When open, it renders at your display's refresh rate — 60, 120, 144 or 240 Hz." />
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Quality" />
+        <WrapPanel>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE770;" Width="164"
+                         IsChecked="{Binding Settings.Performance.Quality, Converter={StaticResource EnumBool}, ConverterParameter=Auto}">
+                <StackPanel>
+                    <TextBlock Text="Automatic" FontWeight="SemiBold" />
+                    <TextBlock Text="High when plugged in, Balanced on battery." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE859;" Width="164"
+                         IsChecked="{Binding Settings.Performance.Quality, Converter={StaticResource EnumBool}, ConverterParameter=BatterySaver}">
+                <StackPanel>
+                    <TextBlock Text="Battery Saver" FontWeight="SemiBold" />
+                    <TextBlock Text="Static previews, no particles." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xEC49;" Width="164"
+                         IsChecked="{Binding Settings.Performance.Quality, Converter={StaticResource EnumBool}, ConverterParameter=Balanced}">
+                <StackPanel>
+                    <TextBlock Text="Balanced" FontWeight="SemiBold" />
+                    <TextBlock Text="Live center, 30 fps neighbors." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xEC4A;" Width="164"
+                         IsChecked="{Binding Settings.Performance.Quality, Converter={StaticResource EnumBool}, ConverterParameter=High}">
+                <StackPanel>
+                    <TextBlock Text="High" FontWeight="SemiBold" />
+                    <TextBlock Text="Sharper previews and blur." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+            <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE945;" Width="164"
+                         IsChecked="{Binding Settings.Performance.Quality, Converter={StaticResource EnumBool}, ConverterParameter=Ultra}">
+                <StackPanel>
+                    <TextBlock Text="Ultra" FontWeight="SemiBold" />
+                    <TextBlock Text="Native resolution, every effect." Style="{StaticResource CaptionText}" />
+                </StackPanel>
+            </RadioButton>
+        </WrapPanel>
+
+        <Border Style="{StaticResource InfoBar}" Margin="0,6,0,0">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource IconText}" Text="&#xE946;" Foreground="{StaticResource AccentBrush}" Margin="0,0,12,0" VerticalAlignment="Top" />
+                <TextBlock Style="{StaticResource CaptionText}" Foreground="{StaticResource TextPrimaryBrush}" MaxWidth="700"
+                           Text="Previews refresh in tiers: the selected window every frame, its neighbors at about 30 fps, distant windows at 8–15 fps or as a still image. Nothing is captured while the switcher is closed." />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Previews" />
+        <c:SettingCard Header="Live previews" Icon="&#xE714;" Description="When off, each window shows a still image taken when the switcher opens.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.Performance.LivePreviews}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Prepare while Alt is held" Icon="&#xE945;"
+                       Description="Starts capturing the desktop the moment Alt goes down, so the blur is ready when Tab arrives.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.Performance.PrewarmOnAlt}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Adaptive quality" Icon="&#xE9D9;" Description="Briefly lowers effects if frames start taking too long.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.Performance.AdaptiveQuality}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Show frame statistics" Icon="&#xE9D9;" Description="Frame time and refresh rate in a corner of the overlay.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.Performance.ShowFrameStats}" />
+        </c:SettingCard>
+    </StackPanel>
+</UserControl>

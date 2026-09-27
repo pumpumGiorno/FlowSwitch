@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- FlowSwitch Settings & onboarding. A separate process so the resident switcher never loads a UI framework. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>FlowSwitch.Settings</RootNamespace>
+    <AssemblyName>FlowSwitch.Settings</AssemblyName>
+    <ApplicationIcon>..\..\assets\icons\FlowSwitch.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FlowSwitch.Core\FlowSwitch.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="..\..\assets\logo\flowswitch-256.png" Link="Assets\flowswitch-256.png" />
+    <Resource Include="..\..\assets\logo\flowswitch-mark.png" Link="Assets\flowswitch-mark.png" />
+  </ItemGroup>
+</Project>

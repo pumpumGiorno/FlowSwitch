@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/FlowSwitch.Core/FlowSwitch.Core.csproj" />
+    <Project Path="src/FlowSwitch.Settings/FlowSwitch.Settings.csproj" />
     <Project Path="src/FlowSwitch/FlowSwitch.csproj" />
   </Folder>
   <Folder Name="/tests/">

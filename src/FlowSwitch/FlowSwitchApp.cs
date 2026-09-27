@@ -57,6 +57,9 @@ internal sealed class FlowSwitchApp : IDisposable
         _commandMessage = RegisterWindowMessageW(IpcProtocol.CommandMessage);
         _taskbarCreated = RegisterWindowMessageW("TaskbarCreated");
         _window = new MainWindow(this);
+        // When started elevated (Settings → Advanced), UIPI would drop these from normal-integrity senders.
+        ChangeWindowMessageFilterEx(_window.Handle, _commandMessage, MSGFLT_ALLOW, 0);
+        ChangeWindowMessageFilterEx(_window.Handle, _taskbarCreated, MSGFLT_ALLOW, 0);
         _tray = new TrayIcon(_window.Handle);
 
         _switcher.Start(settings);

@@ -454,6 +454,13 @@ internal static unsafe partial class Win32
     [LibraryImport("user32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     public static partial uint RegisterWindowMessageW(string lpString);
 
+    public const uint MSGFLT_ALLOW = 1;
+
+    /// <summary>Lets lower-integrity processes (the Settings app, Explorer) post this message to an elevated window.</summary>
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ChangeWindowMessageFilterEx(nint hwnd, uint message, uint action, nint pChangeFilterStruct);
+
     [LibraryImport("user32.dll")]
     public static partial nint SetWinEventHook(uint eventMin, uint eventMax, nint hmodWinEventProc, nint pfnWinEventProc,
         uint idProcess, uint idThread, uint dwFlags);

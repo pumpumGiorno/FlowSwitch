@@ -1,0 +1,20 @@
+<Application x:Class="FlowSwitch.Settings.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cv="clr-namespace:FlowSwitch.Settings.Converters"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <cv:EnumBoolConverter x:Key="EnumBool" />
+            <cv:EqualsVisibilityConverter x:Key="EqualsVisible" />
+            <cv:EqualsBoolConverter x:Key="EqualsBool" />
+            <cv:BoolVisibilityConverter x:Key="BoolVisible" />
+            <cv:BoolVisibilityConverter x:Key="BoolCollapsed" Invert="True" />
+            <cv:LinesConverter x:Key="Lines" />
+            <cv:HexBrushConverter x:Key="HexBrush" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

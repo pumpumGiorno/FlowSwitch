@@ -1,0 +1,110 @@
+<UserControl x:Class="FlowSwitch.Settings.Pages.GeneralPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:FlowSwitch.Settings.Controls"
+             xmlns:s="clr-namespace:FlowSwitch.Settings.Services">
+    <StackPanel>
+        <TextBlock Style="{StaticResource PageTitleText}" Text="General" />
+        <TextBlock Style="{StaticResource PageSubtitleText}" Text="How FlowSwitch behaves when you press Alt + Tab." />
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Switcher" />
+        <c:SettingCard Header="Use FlowSwitch for Alt + Tab" Icon="&#xE7E8;"
+                       Description="When off, Windows' own Alt + Tab is used and FlowSwitch rests in the notification area.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.General.Enabled}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Start with Windows" Icon="&#xE823;" Description="Starts quietly in the notification area when you sign in.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.General.LaunchAtStartup}" />
+        </c:SettingCard>
+
+        <Border Style="{StaticResource GlassPanel}" Margin="0,0,0,4" CornerRadius="10">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                    <TextBlock Style="{StaticResource IconText}" Text="&#xE706;" FontSize="18" Width="20" Margin="0,0,18,0" />
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource BodyText}" Text="Layout" />
+                        <TextBlock Style="{StaticResource CaptionText}" Text="How your windows are arranged while you switch." />
+                    </StackPanel>
+                </StackPanel>
+                <WrapPanel Margin="38,0,0,0">
+                    <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE706;"
+                                 IsChecked="{Binding Settings.General.Mode, Converter={StaticResource EnumBool}, ConverterParameter=SolarSystem}">
+                        <StackPanel>
+                            <TextBlock Text="Solar System" FontWeight="SemiBold" />
+                            <TextBlock Text="Orbits and depth" Style="{StaticResource CaptionText}" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE7AD;"
+                                 IsChecked="{Binding Settings.General.Mode, Converter={StaticResource EnumBool}, ConverterParameter=OrbitMinimal}">
+                        <StackPanel>
+                            <TextBlock Text="Orbit Minimal" FontWeight="SemiBold" />
+                            <TextBlock Text="Calm, no effects" Style="{StaticResource CaptionText}" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE8AB;"
+                                 IsChecked="{Binding Settings.General.Mode, Converter={StaticResource EnumBool}, ConverterParameter=Carousel}">
+                        <StackPanel>
+                            <TextBlock Text="Carousel" FontWeight="SemiBold" />
+                            <TextBlock Text="A curved row" Style="{StaticResource CaptionText}" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource TileRadio}" Tag="&#xECA5;"
+                                 IsChecked="{Binding Settings.General.Mode, Converter={StaticResource EnumBool}, ConverterParameter=Grid}">
+                        <StackPanel>
+                            <TextBlock Text="Grid" FontWeight="SemiBold" />
+                            <TextBlock Text="Everything at once" Style="{StaticResource CaptionText}" />
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource TileRadio}" Tag="&#xE7C4;"
+                                 IsChecked="{Binding Settings.General.Mode, Converter={StaticResource EnumBool}, ConverterParameter=CoverFlow}">
+                        <StackPanel>
+                            <TextBlock Text="Cover Flow" FontWeight="SemiBold" />
+                            <TextBlock Text="Classic, with reflections" Style="{StaticResource CaptionText}" />
+                        </StackPanel>
+                    </RadioButton>
+                </WrapPanel>
+                <c:OrbitPreview Settings="{Binding Settings}" Height="240" Margin="38,6,0,4" WindowCount="7" />
+            </StackPanel>
+        </Border>
+
+        <c:SettingCard Header="Show on" Icon="&#xE7F4;" Description="Which display the switcher appears on.">
+            <ComboBox ItemsSource="{x:Static s:Options.Monitors}" SelectedValuePath="Value" SelectedValue="{Binding Settings.General.ShowOn}" MinWidth="260" />
+        </c:SettingCard>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Windows" />
+        <c:SettingCard Header="Group windows of the same app" Icon="&#xE8A9;"
+                       Description="Many windows of one app become a planet with satellites. The two most recent windows always stay separate.">
+            <ComboBox ItemsSource="{x:Static s:Options.Grouping}" SelectedValuePath="Value" SelectedValue="{Binding Settings.General.Grouping}" MinWidth="240" />
+        </c:SettingCard>
+        <c:SettingCard Header="Show minimized windows" Icon="&#xE921;" Description="Minimized windows appear with their icon on a soft color card.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.General.ShowMinimizedWindows}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Show windows from all virtual desktops" Icon="&#xE7C4;" Description="Off matches Windows: only windows from the current desktop.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.General.ShowWindowsFromAllDesktops}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Show virtual desktops" Icon="&#xE81E;" Description="A quiet strip of your desktops appears in the expanded view.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.General.ShowVirtualDesktops}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Wrap around" Icon="&#xE7AD;" Description="Continue from the last window back to the first.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.General.WrapAround}" />
+        </c:SettingCard>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Timing" />
+        <c:SettingCard Header="Instant switch" Icon="&#xE945;"
+                       Description="Alt + Tab released faster than this switches immediately, without showing the overlay.">
+            <c:SettingSlider Minimum="0" Maximum="400" Format="Milliseconds" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="50"
+                             Value="{Binding Settings.General.RevealDelayMs}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Expanded view after" Icon="&#xE740;"
+                       Description="Keep holding Alt this long to show names, search and virtual desktops.">
+            <c:SettingSlider Minimum="150" Maximum="2000" Format="Milliseconds" TickFrequency="10" IsSnapToTickEnabled="True" SmallChange="10" LargeChange="100"
+                             Value="{Binding Settings.General.ExpandDelayMs}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Highlight the window on an instant switch" Icon="&#xE7B3;"
+                       Description="A brief glow traces the window you switched to.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.General.QuickSwitchHighlight}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Type to search" Icon="&#xE721;" Description="Start typing while the switcher is open to filter by app, title or program name.">
+            <c:ToggleSwitch IsChecked="{Binding Settings.General.SearchOnType}" />
+        </c:SettingCard>
+    </StackPanel>
+</UserControl>

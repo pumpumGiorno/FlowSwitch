@@ -1,0 +1,113 @@
+<UserControl x:Class="FlowSwitch.Settings.Pages.AppearancePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:FlowSwitch.Settings.Controls"
+             xmlns:s="clr-namespace:FlowSwitch.Settings.Services">
+    <StackPanel>
+        <TextBlock Style="{StaticResource PageTitleText}" Text="Appearance" />
+        <TextBlock Style="{StaticResource PageSubtitleText}" Text="Glass, light and color. Changes show up in the preview right away." />
+
+        <c:OrbitPreview Settings="{Binding Settings}" Height="280" Margin="0,22,0,0" />
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Theme" />
+        <c:SettingCard Header="Background" Icon="&#xE771;" Description="Auto adapts the dimming to how bright your desktop is.">
+            <Border Style="{StaticResource SegmentHost}">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Dark"
+                                 IsChecked="{Binding Settings.Appearance.Theme, Converter={StaticResource EnumBool}, ConverterParameter=Dark}" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="OLED black"
+                                 IsChecked="{Binding Settings.Appearance.Theme, Converter={StaticResource EnumBool}, ConverterParameter=Oled}" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Auto"
+                                 IsChecked="{Binding Settings.Appearance.Theme, Converter={StaticResource EnumBool}, ConverterParameter=Auto}" />
+                </StackPanel>
+            </Border>
+        </c:SettingCard>
+        <c:SettingCard Header="Ambient color" Icon="&#xE790;" Description="The soft light behind the selected window.">
+            <Border Style="{StaticResource SegmentHost}">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="From app"
+                                 IsChecked="{Binding Settings.Appearance.AmbientSource, Converter={StaticResource EnumBool}, ConverterParameter=FromApp}" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Custom"
+                                 IsChecked="{Binding Settings.Appearance.AmbientSource, Converter={StaticResource EnumBool}, ConverterParameter=Custom}" />
+                    <RadioButton Style="{StaticResource SegmentButton}" Content="Neutral"
+                                 IsChecked="{Binding Settings.Appearance.AmbientSource, Converter={StaticResource EnumBool}, ConverterParameter=Neutral}" />
+                </StackPanel>
+            </Border>
+        </c:SettingCard>
+        <c:SettingCard Header="Custom color" Icon="&#xE790;" Description="Used when the ambient color is set to Custom."
+                       Visibility="{Binding Settings.Appearance.AmbientSource, Converter={StaticResource EqualsVisible}, ConverterParameter=Custom}">
+            <StackPanel Orientation="Horizontal">
+                <ItemsControl ItemsSource="{x:Static s:Options.AccentSwatches}" VerticalAlignment="Center" Margin="0,0,14,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Tag="{Binding}" Click="OnSwatchClick" Cursor="Hand" Margin="0,0,6,0" ToolTip="{Binding}">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Grid Width="22" Height="22">
+                                            <Ellipse x:Name="Ring" Stroke="#66FFFFFF" StrokeThickness="0" />
+                                            <Ellipse Margin="3" Fill="{Binding Converter={StaticResource HexBrush}}" />
+                                        </Grid>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Ring" Property="StrokeThickness" Value="1.5" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Ellipse Width="18" Height="18" Fill="{Binding Text, ElementName=CustomColor, Converter={StaticResource HexBrush}}" Margin="0,0,8,0"
+                         Stroke="#33FFFFFF" StrokeThickness="1" VerticalAlignment="Center" />
+                <TextBox x:Name="CustomColor" Width="96" MaxLength="9" VerticalAlignment="Center"
+                         Text="{Binding Settings.Appearance.AmbientCustomColor, UpdateSourceTrigger=PropertyChanged}" />
+            </StackPanel>
+        </c:SettingCard>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Backdrop" />
+        <c:SettingCard Header="Blur" Icon="&#xE7B3;" Description="How strongly the desktop behind the switcher is blurred.">
+            <c:SettingSlider Value="{Binding Settings.Appearance.BlurIntensity}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Darkness" Icon="&#xE708;" Description="How much the desktop is dimmed.">
+            <c:SettingSlider Value="{Binding Settings.Appearance.BackgroundDarkness}" />
+        </c:SettingCard>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Cards" />
+        <c:SettingCard Header="Size" Icon="&#xE740;">
+            <c:SettingSlider Minimum="0.75" Maximum="1.3" Value="{Binding Settings.Appearance.CardSize}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Glass opacity" Icon="&#xE81E;">
+            <c:SettingSlider Minimum="0.3" Maximum="1" Value="{Binding Settings.Appearance.CardOpacity}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Corner radius" Icon="&#xE7C3;">
+            <c:SettingSlider Minimum="6" Maximum="40" Format="Units" SmallChange="1" LargeChange="4" TickFrequency="1" IsSnapToTickEnabled="True"
+                             Value="{Binding Settings.Appearance.CardCornerRadius}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Border highlight" Description="The thin light along the edge of each card.">
+            <c:SettingSlider Value="{Binding Settings.Appearance.BorderIntensity}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Text size" Icon="&#xE8D2;">
+            <c:SettingSlider Minimum="0.8" Maximum="1.4" Value="{Binding Settings.Appearance.FontScale}" />
+        </c:SettingCard>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Light" />
+        <c:SettingCard Header="Glow" Icon="&#xE706;" Description="Each app glows in its own color.">
+            <c:SettingSlider Value="{Binding Settings.Appearance.GlowIntensity}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Glow radius">
+            <c:SettingSlider Value="{Binding Settings.Appearance.GlowRadius}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Orbit lines" Icon="&#xE7AD;" Description="Visibility of the thin orbit paths.">
+            <c:SettingSlider Value="{Binding Settings.Appearance.OrbitVisibility}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Particles" Icon="&#xE734;" Description="A few faint specks of light drifting along the orbits.">
+            <c:SettingSlider Value="{Binding Settings.Appearance.ParticleIntensity}" />
+        </c:SettingCard>
+    </StackPanel>
+</UserControl>

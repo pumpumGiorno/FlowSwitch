@@ -825,7 +825,7 @@ public sealed class SceneComposer
     /// Perceptual gain for coloured light: yellow and green read far brighter than blue or violet
     /// at the same intensity, so bright hues are toned down and deep hues lifted slightly.
     /// </summary>
-    private static float GlowGain(ColorF c)
+    public static float GlowGain(ColorF c)
     {
         float l = MathF.Max(0.05f, c.Luminance);
         return Math.Clamp(MathF.Pow(0.3f / l, 0.9f), 0.45f, 1.25f);
