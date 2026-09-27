@@ -1,0 +1,13 @@
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+*.swp
+artifacts/
+publish/
+TestResults/
+tools/web-preview/generated/
+tools/web-preview/node_modules/
+*.spv

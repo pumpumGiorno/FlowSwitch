@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Platform-neutral engine: motion, layout, session logic, scene composition, settings.
+       Deliberately free of Windows dependencies so it can be unit-tested and previewed anywhere. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>FlowSwitch.Core</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsTrimmable>true</IsTrimmable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="FlowSwitch.Core.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FlowSwitch design preview</title>
+<style>
+  @font-face { font-family: Inter; src: url(generated/fonts/Inter-Regular.woff2) format('woff2'); font-weight: 400; }
+  @font-face { font-family: Inter; src: url(generated/fonts/Inter-Medium.woff2) format('woff2'); font-weight: 500; }
+  @font-face { font-family: Inter; src: url(generated/fonts/Inter-SemiBold.woff2) format('woff2'); font-weight: 600; }
+  @font-face { font-family: Inter; src: url(generated/fonts/Inter-Bold.woff2) format('woff2'); font-weight: 700 800; }
+  html, body { margin: 0; background: #000; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+  import { PreviewRenderer } from './renderer.js';
+  const params = new URLSearchParams(location.search);
+  const scenario = params.get('scenario') ?? 'hero';
+  await document.fonts.load('600 20px Inter');
+  await document.fonts.load('400 20px Inter');
+  await document.fonts.load('500 20px Inter');
+  const scene = await (await fetch(`generated/${scenario}.json`)).json();
+  const renderer = new PreviewRenderer(document.getElementById('c'), scene);
+  window.frameCount = scene.frames.length;
+  window.renderFrame = (i) => renderer.render(i);
+  if (params.has('play')) {
+    let i = 0;
+    const tick = () => { renderer.render(i++ % scene.frames.length); requestAnimationFrame(tick); };
+    tick();
+  } else {
+    renderer.render(Number(params.get('frame') ?? 0));
+  }
+  window.ready = true;
+</script>
+</body>
+</html>
