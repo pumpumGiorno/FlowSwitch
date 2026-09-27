@@ -35,6 +35,10 @@ internal static unsafe partial class Win32
     public const uint WM_COMMAND = 0x0111;
     public const uint WM_SYSCOMMAND = 0x0112;
     public const uint WM_TIMER = 0x0113;
+    public const uint WM_HOTKEY = 0x0312;
+    public const uint MOD_ALT = 0x0001;
+    public const uint MOD_CONTROL = 0x0002;
+    public const uint MOD_NOREPEAT = 0x4000;
     public const uint WM_MOUSEMOVE = 0x0200;
     public const uint WM_LBUTTONDOWN = 0x0201;
     public const uint WM_LBUTTONUP = 0x0202;
@@ -97,6 +101,7 @@ internal static unsafe partial class Win32
     public const int VK_LWIN = 0x5B;
     public const int VK_RWIN = 0x5C;
     public const int VK_F4 = 0x73;
+    public const int VK_F12 = 0x7B;
     public const int VK_LSHIFT = 0xA0;
     public const int VK_RSHIFT = 0xA1;
     public const int VK_LCONTROL = 0xA2;
@@ -295,6 +300,14 @@ internal static unsafe partial class Win32
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool KillTimer(nint hWnd, nuint uIDEvent);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool RegisterHotKey(nint hWnd, int id, uint fsModifiers, uint vk);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UnregisterHotKey(nint hWnd, int id);
 
     [LibraryImport("user32.dll", SetLastError = true)]
     public static partial uint SendInput(uint cInputs, INPUT* pInputs, int cbSize);

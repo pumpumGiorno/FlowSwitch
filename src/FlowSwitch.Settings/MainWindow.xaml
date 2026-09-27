@@ -49,6 +49,7 @@
                     <RadioButton Style="{StaticResource NavItem}" Tag="&#xEC4A;" Content="Performance" x:Name="NavPerformance" />
                     <RadioButton Style="{StaticResource NavItem}" Tag="&#xE765;" Content="Hotkeys" x:Name="NavHotkeys" />
                     <RadioButton Style="{StaticResource NavItem}" Tag="&#xE90F;" Content="Advanced" x:Name="NavAdvanced" />
+                    <RadioButton Style="{StaticResource NavItem}" Tag="&#xE9D9;" Content="Diagnostics" x:Name="NavDiagnostics" />
                     <RadioButton Style="{StaticResource NavItem}" Tag="&#xE946;" Content="About" x:Name="NavAbout" />
                 </StackPanel>
                 <!-- The selection pill glides between entries. -->
@@ -68,20 +69,33 @@
                 </Canvas>
             </Grid>
 
-            <!-- Status + try it -->
+            <!-- Status of the resident FlowSwitch.exe (real IPC answer, never assumed) + start / try it -->
             <Border Grid.Row="2" Style="{StaticResource GlassPanel}" Padding="14,12" CornerRadius="12">
                 <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#FF3DDC97" VerticalAlignment="Center" />
-                        <TextBlock x:Name="StatusText" Text="Running" Margin="8,0,0,1" FontSize="13" VerticalAlignment="Center" />
-                    </StackPanel>
-                    <TextBlock x:Name="StatusDetail" Style="{StaticResource CaptionText}" Margin="16,2,0,10" Text="Alt + Tab is handled by FlowSwitch." />
-                    <Button x:Name="TryButton" Style="{StaticResource AccentButton}" HorizontalAlignment="Stretch" Click="OnTryClick">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE768;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" Margin="0,1,8,0" />
-                            <TextBlock x:Name="TryText" Text="Try it" />
-                        </StackPanel>
-                    </Button>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Ellipse x:Name="StatusDot" Width="9" Height="9" Fill="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusText" Grid.Column="1" Text="FlowSwitch: checking…" Margin="8,0,0,1" FontSize="14" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock x:Name="StatusDetail" Style="{StaticResource CaptionText}" Margin="17,3,0,10" TextWrapping="Wrap" Text="" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="HostButton" HorizontalAlignment="Stretch" Click="OnHostButtonClick" Content="Start" />
+                        <Button x:Name="TryButton" Grid.Column="2" Style="{StaticResource AccentButton}" HorizontalAlignment="Stretch" Click="OnTryClick">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE768;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" Margin="0,1,8,0" />
+                                <TextBlock x:Name="TryText" Text="Try it" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
                 </StackPanel>
             </Border>
         </Grid>

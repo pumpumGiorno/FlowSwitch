@@ -2,7 +2,7 @@
   <!-- FlowSwitch Settings & onboarding. A separate process so the resident switcher never loads a UI framework. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>$(FlowSwitchWindowsTargetFramework)</TargetFramework>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <UseWPF>true</UseWPF>
     <RootNamespace>FlowSwitch.Settings</RootNamespace>

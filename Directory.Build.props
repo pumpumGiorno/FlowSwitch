@@ -13,5 +13,10 @@
     <!-- Lets the Windows-only projects compile on any OS (CI / Linux dev boxes). They only run on Windows. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Deterministic>true</Deterministic>
+    <!-- FlowSwitch.exe and FlowSwitch.Settings.exe are published into ONE folder. They must use the
+         same Windows SDK projection (Microsoft.Windows.SDK.NET.dll / WinRT.Runtime.dll), otherwise
+         whichever project is published last overwrites the other's copy. An older projection than
+         FlowSwitch.exe was compiled against breaks every WinRT type (capture, D3D interop) at runtime. -->
+    <FlowSwitchWindowsTargetFramework>net10.0-windows10.0.26100.0</FlowSwitchWindowsTargetFramework>
   </PropertyGroup>
 </Project>

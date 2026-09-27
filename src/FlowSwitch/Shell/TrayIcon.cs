@@ -74,6 +74,9 @@ internal sealed unsafe class TrayIcon : IDisposable
         if (add)
         {
             _added = Shell_NotifyIcon(NIM_ADD, ref data);
+            if (_added) Log.Info($"Tray icon added (icon handle 0x{data.hIcon:X}).");
+            else Log.Warn($"Shell_NotifyIcon(NIM_ADD) failed (Explorer not ready yet?) — will retry when the taskbar is created. " +
+                          $"GetLastError = {FlowSwitch.Diagnostics.ErrorText.Win32(System.Runtime.InteropServices.Marshal.GetLastSystemError())}");
             data.uVersion = NOTIFYICON_VERSION_4;
             Shell_NotifyIcon(NIM_SETVERSION, ref data);
         }

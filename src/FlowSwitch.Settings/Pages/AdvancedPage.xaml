@@ -58,7 +58,7 @@
         </c:SettingCard>
         <c:SettingCard Header="Files" Icon="&#xE8B7;">
             <StackPanel Orientation="Horizontal">
-                <Button Content="Open log folder" Click="OnOpenLogs" Margin="0,0,8,0" />
+                <Button Content="Open logs folder" Click="OnOpenLogs" Margin="0,0,8,0" />
                 <Button Content="Open settings folder" Click="OnOpenSettingsFolder" />
             </StackPanel>
         </c:SettingCard>

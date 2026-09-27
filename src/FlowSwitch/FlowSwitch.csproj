@@ -3,7 +3,7 @@
        Deliberately free of WPF/WinForms/WinUI so it starts fast and stays small in memory. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>$(FlowSwitchWindowsTargetFramework)</TargetFramework>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <RootNamespace>FlowSwitch</RootNamespace>
     <AssemblyName>FlowSwitch</AssemblyName>
@@ -14,7 +14,8 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <TieredPGO>true</TieredPGO>
     <TieredCompilation>true</TieredCompilation>
-    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <!-- Readable exception messages in the log (UseSystemResourceKeys would reduce them to resource keys). -->
+    <UseSystemResourceKeys>false</UseSystemResourceKeys>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CA1416;SYSLIB1054</NoWarn>
   </PropertyGroup>

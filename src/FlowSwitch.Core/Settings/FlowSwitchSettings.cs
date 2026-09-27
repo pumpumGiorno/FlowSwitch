@@ -195,6 +195,11 @@ public sealed class AdvancedSettings
     public bool AutoRestartAfterCrash { get; set; } = true;
     public bool RunElevated { get; set; }
     public LogLevel LogLevel { get; set; } = LogLevel.Info;
+    /// <summary>
+    /// Detailed start-up / input / renderer logging (Alt, Tab, Shift and Esc transitions — never
+    /// other keys). On by default while FlowSwitch's Windows runtime is being verified.
+    /// </summary>
+    public bool DiagnosticLogging { get; set; } = true;
 
     internal void Normalize()
     {

@@ -51,15 +51,15 @@ public partial class AdvancedPage : UserControl
         }
     }
 
-    private void OnOpenLogs(object sender, RoutedEventArgs e) =>
-        OpenFolder(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FlowSwitch", "logs"));
+    private void OnOpenLogs(object sender, RoutedEventArgs e) => OpenFolder(FlowSwitchPaths.LogDirectory);
 
     private void OnOpenSettingsFolder(object sender, RoutedEventArgs e) => OpenFolder(Model.Store.Directory);
 
-    private void OnRestart(object sender, RoutedEventArgs e)
+    private async void OnRestart(object sender, RoutedEventArgs e)
     {
         Model.SaveNow();
-        if (!FlowSwitchHost.Send(IpcProtocol.Restart)) FlowSwitchHost.Start();
+        var result = await FlowSwitchHost.RestartAsync();
+        if (!result.Running) MessageBox.Show(Window.GetWindow(this)!, result.Message, "FlowSwitch", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void OnReset(object sender, RoutedEventArgs e)
@@ -69,16 +69,5 @@ public partial class AdvancedPage : UserControl
         if (answer == MessageBoxResult.OK) Model.ResetToDefaults();
     }
 
-    private static void OpenFolder(string path)
-    {
-        try
-        {
-            Directory.CreateDirectory(path);
-            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = false });
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "FlowSwitch", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-    }
+    private static void OpenFolder(string path) => DiagnosticsPage.OpenFolder(path);
 }

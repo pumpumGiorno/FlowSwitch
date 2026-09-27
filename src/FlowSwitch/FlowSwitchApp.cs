@@ -26,7 +26,6 @@ internal sealed class FlowSwitchApp : IDisposable
     private readonly HookBridge _bridge = new();
     private readonly KeyboardHook _hook;
     private readonly SwitcherThread _switcher;
-    private readonly string _localData;
     private MainWindow? _window;
     private TrayIcon? _tray;
     private Watchdog? _watchdog;
@@ -37,36 +36,50 @@ internal sealed class FlowSwitchApp : IDisposable
     private uint _commandMessage;
     private uint _taskbarCreated;
 
-    public FlowSwitchApp(string[] args, SettingsService settings, CrashGuard crash, string localData)
+    private const int DiagnosticHotkeyId = 0xF12;
+
+    public FlowSwitchApp(string[] args, SettingsService settings, CrashGuard crash)
     {
         _args = args;
         _settings = settings;
         _crash = crash;
-        _localData = localData;
         _hook = new KeyboardHook(_bridge);
-        _switcher = new SwitcherThread(_bridge, Path.Combine(localData, "ShaderCache"));
+        _switcher = new SwitcherThread(_bridge, FlowSwitchPaths.ShaderCache);
     }
 
     public int Run()
     {
         var settings = _settings.Current;
+        HostHealth.Elevated = SystemDescription.IsElevated;
         _crash.AutoRestart = settings.Advanced.AutoRestartAfterCrash;
         _safeMode = _crash.ShouldStartInSafeMode(out _safeModeReason);
         _pausedUntil = _settings.Store.LoadState().PausedUntil is { } until && until > DateTimeOffset.Now ? until : null;
+        if (_safeMode) Log.Warn($"SAFE MODE is ON — the keyboard hook will not take Alt+Tab. Reason: {_safeModeReason ?? "(none recorded)"}");
+        else Log.Info("Safe mode: off.");
+        if (_pausedUntil is { } p) Log.Info($"Paused until {p.LocalDateTime:g}.");
+
+        string projection = Capture.CaptureProbe.CheckProjection(out bool projectionBroken);
+        HostHealth.WinRtProjection = projection;
+        HostHealth.WinRtProjectionBroken = projectionBroken;
+        if (projectionBroken) Log.Error($"WinRT projection problem — live previews will be unavailable: {projection}. Reinstall FlowSwitch from a complete package.");
+        else Log.Info($"WinRT projection: {projection}.");
 
         _commandMessage = RegisterWindowMessageW(IpcProtocol.CommandMessage);
         _taskbarCreated = RegisterWindowMessageW("TaskbarCreated");
         _window = new MainWindow(this);
+        Log.Info($"Host window created: 0x{_window.Handle:X} (class {IpcProtocol.HostWindowClass}).");
         // When started elevated (Settings → Advanced), UIPI would drop these from normal-integrity senders.
         ChangeWindowMessageFilterEx(_window.Handle, _commandMessage, MSGFLT_ALLOW, 0);
         ChangeWindowMessageFilterEx(_window.Handle, _taskbarCreated, MSGFLT_ALLOW, 0);
         _tray = new TrayIcon(_window.Handle);
 
+        _bridge.HostWindow = _window.Handle;
         _switcher.Start(settings);
         ApplyEnabledState();
         _hook.Start();
         _watchdog = new Watchdog(_bridge, () => _switcher.OverlayVisible, () => _switcher.WindowHandle, _crash);
         _watchdog.Start();
+        RegisterDiagnosticHotkey();
 
         _settings.Changed += _ => PostMessageW(_window.Handle, WmSettingsChanged, 0, 0);
         StartupRegistration.Apply(settings.General.LaunchAtStartup, settings.Advanced.RunElevated);
@@ -81,17 +94,41 @@ internal sealed class FlowSwitchApp : IDisposable
         {
             SettingsLauncher.Launch("--onboarding");
         }
-        Log.Info($"FlowSwitch running (safe mode: {_safeMode}, args: {string.Join(' ', _args)}).");
+        Log.Info($"FlowSwitch running (safe mode: {_safeMode}, enabled: {settings.General.Enabled}, paused: {IsPaused}). " +
+                 "Alt+Tab is taken over once the renderer reports ready.");
 
-        while (GetMessageW(out MSG msg, 0, 0, 0) > 0)
+        int result;
+        while ((result = GetMessageW(out MSG msg, 0, 0, 0)) > 0)
         {
             TranslateMessage(msg);
             DispatchMessageW(msg);
         }
+        if (result < 0) ErrorText.LogWin32Failure("GetMessageW (main thread)", result, System.Runtime.InteropServices.Marshal.GetLastPInvokeError());
         return 0;
     }
 
+    /// <summary>
+    /// Ctrl+Alt+F12 opens the overlay directly. It uses RegisterHotKey, not the keyboard hook, so it
+    /// tells "the hook does not see Alt+Tab" apart from "the overlay cannot be shown".
+    /// </summary>
+    private void RegisterDiagnosticHotkey()
+    {
+        // No MOD_NOREPEAT: some environments never match it. Auto-repeat is debounced in WndProc.
+        if (RegisterHotKey(_window!.Handle, DiagnosticHotkeyId, MOD_CONTROL | MOD_ALT, VK_F12))
+        {
+            HostHealth.DiagnosticHotkey = true;
+            Log.Info("Diagnostic hotkey Ctrl+Alt+F12 registered (opens the overlay without Alt+Tab).");
+        }
+        else
+        {
+            ErrorText.LogWin32Failure("RegisterHotKey(Ctrl+Alt+F12)", false, System.Runtime.InteropServices.Marshal.GetLastPInvokeError(),
+                "another app owns this shortcut — use Settings → Diagnostics → Test overlay instead");
+        }
+    }
+
     // ───────────────────────────────── state ─────────────────────────────────
+
+    private bool _enabledStateLogged;
 
     private bool IsPaused => _pausedUntil is { } until && until > DateTimeOffset.Now;
 
@@ -99,7 +136,16 @@ internal sealed class FlowSwitchApp : IDisposable
     {
         var settings = _settings.Current;
         bool active = settings.General.Enabled && !_safeMode && !IsPaused;
+        if (_bridge.Enabled != active || !_enabledStateLogged)
+        {
+            _enabledStateLogged = true;
+            Log.Info($"Alt+Tab takeover {(active ? "enabled" : "disabled")} (setting enabled: {settings.General.Enabled}, safe mode: {_safeMode}, paused: {IsPaused}).");
+        }
         _bridge.Enabled = active;
+        HostHealth.Enabled = settings.General.Enabled;
+        HostHealth.SafeMode = _safeMode;
+        HostHealth.SafeModeReason = _safeModeReason;
+        HostHealth.Paused = IsPaused;
         string tip = !settings.General.Enabled || _safeMode ? "FlowSwitch — off (Windows Alt+Tab)"
             : IsPaused ? $"FlowSwitch — paused until {_pausedUntil!.Value.LocalDateTime:t}"
             : "FlowSwitch — Alt+Tab";
@@ -124,7 +170,9 @@ internal sealed class FlowSwitchApp : IDisposable
         if (enabled && _safeMode)
         {
             _safeMode = false;
+            _safeModeReason = null;
             _crash.ClearSafeMode();
+            Log.Info("Safe mode cleared by the user.");
         }
         _settings.Update(s => s.General.Enabled = enabled);
         ApplyEnabledState();
@@ -180,15 +228,28 @@ internal sealed class FlowSwitchApp : IDisposable
         }
     }
 
-    private void OnCommand(int command)
+    /// <summary>Handles a Settings / second-instance command. Returns the message result.</summary>
+    private nint OnCommand(int command, nint lParam)
     {
+        if (command != IpcProtocol.QueryStatus) Log.Info($"IPC command {command} received.");
         switch (command)
         {
+            case IpcProtocol.QueryStatus:
+                return (nint)(long)HostHealth.ToStatus();
             case IpcProtocol.OpenSettings:
                 SettingsLauncher.Launch();
                 break;
             case IpcProtocol.ShowPreview:
                 _switcher.Post(c => c.ShowPreview());
+                break;
+            case IpcProtocol.TestOverlay:
+                _switcher.Post(c => c.ShowTestOverlay("Settings → Test overlay"));
+                break;
+            case IpcProtocol.RunDiagnostics:
+                SelfTest.Start((int)lParam, _bridge, _switcher, $"FlowSwitch {typeof(Program).Assembly.GetName().Version}");
+                break;
+            case IpcProtocol.ExitSafeMode:
+                SetEnabled(true);
                 break;
             case IpcProtocol.ReloadSettings:
                 _settings.Reload();
@@ -207,10 +268,12 @@ internal sealed class FlowSwitchApp : IDisposable
                 _tray?.ShowBalloon("FlowSwitch is ready", "Press Alt+Tab.");
                 break;
         }
+        return 1;
     }
 
     public void Dispose()
     {
+        if (_window is not null && HostHealth.DiagnosticHotkey) UnregisterHotKey(_window.Handle, DiagnosticHotkeyId);
         _pauseTimer?.Dispose();
         _watchdog?.Dispose();
         _hook.Dispose();
@@ -225,6 +288,8 @@ internal sealed class FlowSwitchApp : IDisposable
         private const uint PBT_APMRESUMEAUTOMATIC = 0x12;
         private const uint WTS_SESSION_UNLOCK = 0x8;
         private readonly FlowSwitchApp _app;
+        private const nuint HookHotkeyTimer = 0xF12;
+        private long _lastHotkey = -10_000;
 
         public MainWindow(FlowSwitchApp app)
         {
@@ -242,7 +307,30 @@ internal sealed class FlowSwitchApp : IDisposable
             }
             if (msg == _app._commandMessage && msg != 0)
             {
-                _app.OnCommand((int)wParam);
+                return _app.OnCommand((int)wParam, lParam);
+            }
+            if (msg == WM_HOTKEY && (int)wParam == DiagnosticHotkeyId)
+            {
+                KillTimer(Handle, HookHotkeyTimer);
+                if (Environment.TickCount64 - _lastHotkey < 1500) return 0; // held key auto-repeat
+                _lastHotkey = Environment.TickCount64;
+                Log.Info("Ctrl+Alt+F12 pressed (RegisterHotKey, not the keyboard hook) — opening the test overlay.");
+                _app._switcher.Post(c => c.ShowTestOverlay("Ctrl+Alt+F12"));
+                return 0;
+            }
+            if (msg == HookBridge.DiagnosticKeyMessage)
+            {
+                // The hook sees keys before RegisterHotKey: give the real hotkey 250 ms to arrive.
+                SetTimer(Handle, HookHotkeyTimer, 250, 0);
+                return 0;
+            }
+            if (msg == WM_TIMER && wParam == HookHotkeyTimer)
+            {
+                KillTimer(Handle, HookHotkeyTimer);
+                if (Environment.TickCount64 - _lastHotkey < 1500) return 0;
+                _lastHotkey = Environment.TickCount64;
+                Log.Info("Ctrl+Alt+F12 seen by the keyboard hook (RegisterHotKey did not deliver it) — opening the test overlay.");
+                _app._switcher.Post(c => c.ShowTestOverlay("Ctrl+Alt+F12 via keyboard hook"));
                 return 0;
             }
             if (msg == _app._taskbarCreated && msg != 0)

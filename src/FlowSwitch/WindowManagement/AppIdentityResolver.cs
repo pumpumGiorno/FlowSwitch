@@ -123,10 +123,20 @@ internal sealed unsafe class AppIdentityResolver
                 uint size = 1024;
                 if (QueryFullProcessImageNameW(process, 0, buffer, ref size)) path = new string(buffer, 0, (int)size);
 
-                uint len = 256;
-                char* idBuffer = stackalloc char[256];
-                if (GetApplicationUserModelId(process, ref len, idBuffer) == 0 && len > 1)
-                    aumid = new string(idBuffer, 0, (int)len - 1);
+                if (s_aumidAvailable)
+                {
+                    uint len = 256;
+                    char* idBuffer = stackalloc char[256];
+                    try
+                    {
+                        if (GetApplicationUserModelId(process, ref len, idBuffer) == 0 && len > 1)
+                            aumid = new string(idBuffer, 0, (int)len - 1);
+                    }
+                    catch (EntryPointNotFoundException)
+                    {
+                        s_aumidAvailable = false; // not on this system; packaged-app identity is optional
+                    }
+                }
             }
             finally
             {
@@ -136,6 +146,8 @@ internal sealed unsafe class AppIdentityResolver
         _processCache[pid] = (path, aumid, now);
         return (path, aumid);
     }
+
+    private static bool s_aumidAvailable = true;
 
     /// <summary>Drops cached process entries that are no longer referenced.</summary>
     public void Trim(IEnumerable<uint> livePids)

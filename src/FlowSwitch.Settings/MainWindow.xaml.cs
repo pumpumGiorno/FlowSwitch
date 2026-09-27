@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using FlowSwitch.Core.Ipc;
 using FlowSwitch.Settings.Controls;
 using FlowSwitch.Settings.Pages;
 using FlowSwitch.Settings.Services;
@@ -40,6 +41,7 @@ public partial class MainWindow : Window
             [NavPerformance] = () => new PerformancePage(),
             [NavHotkeys] = () => new HotkeysPage(),
             [NavAdvanced] = () => new AdvancedPage(),
+            [NavDiagnostics] = () => new DiagnosticsPage(),
             [NavAbout] = () => new AboutPage(),
         };
         foreach (var nav in _pages.Keys) nav.Checked += (s, _) => Navigate((RadioButton)s!);
@@ -55,11 +57,14 @@ public partial class MainWindow : Window
         _statusTimer.Tick += (_, _) => UpdateStatus();
         _model.Changed += (_, _) => UpdateStatus();
 
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
             NavGeneral.IsChecked = true;
-            UpdateStatus();
             _statusTimer.Start();
+            // Opening Settings must never leave the user believing FlowSwitch is on while the
+            // resident process is missing: start it and wait for its answer.
+            if (FlowSwitchHost.QueryStatus() is null) await StartHostAsync("Settings opened");
+            else UpdateStatus();
         };
         Closed += (_, _) =>
         {
@@ -128,44 +133,95 @@ public partial class MainWindow : Window
 
     // ───────────────────────────── status ─────────────────────────────
 
-    private void UpdateStatus()
+    private bool _statusBusy;
+    private bool _starting;
+
+    /// <summary>Navigates to the Diagnostics page (from the status panel or other pages).</summary>
+    public void ShowDiagnostics() => Navigate(NavDiagnostics);
+
+    /// <summary>Asks the host for its real state (off the UI thread) and shows it.</summary>
+    public async void UpdateStatus()
     {
-        bool running = FlowSwitchHost.IsRunning;
-        var general = _model.Settings.General;
-        if (!running)
+        if (_statusBusy || _starting) return;
+        _statusBusy = true;
+        try
         {
-            StatusDot.Fill = (Brush)FindResource("TextTertiaryBrush");
-            StatusText.Text = "Not running";
-            StatusDetail.Text = "Windows' Alt + Tab is active.";
-            TryText.Text = "Start FlowSwitch";
+            var status = await Task.Run(FlowSwitchHost.QueryStatus);
+            ShowStatus(status);
         }
-        else if (!general.Enabled)
+        finally
         {
-            StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0xFF, 0xB8, 0x6B));
-            StatusText.Text = "Turned off";
-            StatusDetail.Text = "Windows' Alt + Tab is active.";
-            TryText.Text = "Try it";
-        }
-        else
-        {
-            StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0x3D, 0xDC, 0x97));
-            StatusText.Text = "Running";
-            StatusDetail.Text = "Alt + Tab is handled by FlowSwitch.";
-            TryText.Text = "Try it";
+            _statusBusy = false;
         }
     }
 
-    private void OnTryClick(object sender, RoutedEventArgs e)
+    private void ShowStatus(HostStatus? status)
+    {
+        var (headline, detail, tone) = HostStatusText.Summary(status, FlowSwitchHost.LastStartError);
+        StatusText.Text = headline;
+        StatusDetail.Text = detail;
+        StatusDot.Fill = tone switch
+        {
+            StatusTone.Good => new SolidColorBrush(Color.FromRgb(0x3D, 0xDC, 0x97)),
+            StatusTone.Warning => new SolidColorBrush(Color.FromRgb(0xFF, 0xB8, 0x6B)),
+            StatusTone.Error => new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B)),
+            _ => (Brush)FindResource("TextTertiaryBrush"),
+        };
+        HostButton.Content = status is null ? "Start" : "Restart";
+        TryText.Text = "Try it";
+        TryButton.IsEnabled = status is { } s && s.HasFlag(HostStatus.RendererReady);
+    }
+
+    private async Task StartHostAsync(string reason)
+    {
+        _starting = true;
+        StatusText.Text = "FlowSwitch: Starting…";
+        StatusDetail.Text = "Waiting for the resident app to answer.";
+        StatusDot.Fill = (Brush)FindResource("TextTertiaryBrush");
+        HostButton.IsEnabled = false;
+        try
+        {
+            await FlowSwitchHost.EnsureRunningAsync(reason);
+        }
+        finally
+        {
+            _starting = false;
+            HostButton.IsEnabled = true;
+        }
+        UpdateStatus();
+    }
+
+    private async void OnHostButtonClick(object sender, RoutedEventArgs e)
     {
         _model.SaveNow();
-        if (!FlowSwitchHost.IsRunning)
+        if (FlowSwitchHost.QueryStatus() is null)
         {
-            if (!FlowSwitchHost.Start())
-                MessageBox.Show(this, "FlowSwitch.exe was not found next to the Settings app.", "FlowSwitch", MessageBoxButton.OK, MessageBoxImage.Information);
-            Dispatcher.BeginInvoke(DispatcherPriority.Background, UpdateStatus);
+            await StartHostAsync("Start button");
             return;
         }
-        FlowSwitchHost.ShowPreview();
+        _starting = true;
+        StatusText.Text = "FlowSwitch: Restarting…";
+        StatusDetail.Text = "Waiting for the resident app to answer.";
+        HostButton.IsEnabled = false;
+        try
+        {
+            await FlowSwitchHost.RestartAsync();
+        }
+        finally
+        {
+            _starting = false;
+            HostButton.IsEnabled = true;
+        }
+        UpdateStatus();
+    }
+
+    private async void OnTryClick(object sender, RoutedEventArgs e)
+    {
+        _model.SaveNow();
+        var result = await FlowSwitchHost.ShowPreviewAsync();
+        if (!result.Running)
+            MessageBox.Show(this, result.Message, "FlowSwitch", MessageBoxButton.OK, MessageBoxImage.Warning);
+        UpdateStatus();
     }
 
     // ───────────────────────────── window chrome ─────────────────────────────

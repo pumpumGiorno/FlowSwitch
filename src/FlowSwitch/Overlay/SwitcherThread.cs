@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using FlowSwitch.Core.Diagnostics;
 using FlowSwitch.Core.Settings;
+using FlowSwitch.Diagnostics;
 using FlowSwitch.Input;
 using FlowSwitch.Shell;
 using FlowSwitch.Interop;
@@ -62,25 +63,30 @@ internal sealed unsafe class SwitcherThread : IDisposable
 
     private void Run(FlowSwitchSettings settings)
     {
+        HostHealth.Switcher = ComponentState.Starting;
         try
         {
+            Log.Info("Switcher thread started.");
             _window = new HostWindow(this);
             _controller = new SwitcherController(_bridge, _shaderCache);
             _controller.WakeRequested += () => Post(c => c.PumpIdle());
             _controller.ApplySettings(settings);
             _bridge.TargetWindow = _window.Handle;
+            HostHealth.Switcher = ComponentState.Ready;
+            Log.Info($"Switcher ready (message window 0x{_window.Handle:X}).");
         }
         catch (Exception ex)
         {
-            Log.Error("Switcher thread failed to start", ex);
+            HostHealth.Switcher = ComponentState.Failed;
+            HostHealth.SwitcherError = ErrorText.Of(ex);
+            Log.Error("Switcher thread failed to start — Alt+Tab stays with Windows", ex);
             _started.Set();
             return;
         }
         _started.Set();
 
-        // Warm up the GPU path shortly after start so the first Alt+Tab is instant,
-        // without competing with the rest of Windows' startup.
-        var warmup = new Timer(_ => Post(c => c.InitializeGraphics()), null, TimeSpan.FromSeconds(2.5), Timeout.InfiniteTimeSpan);
+        // Graphics come up right away: until they do, the hook leaves Alt+Tab to Windows.
+        Post(c => c.InitializeGraphics());
 
         while (_running)
         {
@@ -99,13 +105,18 @@ internal sealed unsafe class SwitcherThread : IDisposable
             }
             else
             {
-                MsgWaitForMultipleObjectsEx(0, null, INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+                // Idle: no CPU, no GPU — except to retry a failed renderer on schedule.
+                uint timeout = controller.SecondsUntilGraphicsRetry is { } retry ? (uint)Math.Clamp(retry * 1000 + 10, 10, int.MaxValue) : INFINITE;
+                MsgWaitForMultipleObjectsEx(0, null, timeout, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
                 Pump();
+                if (!_running) break;
+                controller.RetryGraphicsIfDue();
             }
         }
 
-        warmup.Dispose();
+        Log.Info("Switcher thread exiting.");
         _bridge.TargetWindow = 0;
+        _bridge.RendererReady = false;
         _controller.Dispose();
         _window.Dispose();
     }

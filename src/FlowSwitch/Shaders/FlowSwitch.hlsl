@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 //  FlowSwitch shaders (Shader Model 5.0)
 //
 //  Every surface of the overlay is drawn analytically: rounded rectangles are
@@ -13,7 +13,7 @@
 //  The per-draw constant layout (P[0..11]) is documented in
 //  FlowSwitch.Core/Scene/DrawCommand.cs and written by SceneComposer.cs.
 //  VSQuad has a CPU mirror in FlowSwitch.Core/Scene/Projection.cs.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 cbuffer FrameCB : register(b0)
 {
@@ -41,7 +41,7 @@ struct VSOut
 
 static const float3 LUMA = float3(0.2126, 0.7152, 0.0722);
 
-// ───────────────────────────── helpers ─────────────────────────────
+// ----------------------------- helpers -----------------------------
 
 float Hash12(float2 p)
 {
@@ -65,7 +65,7 @@ float SdRoundRect(float2 p, float2 halfSize, float r)
 
 float Erf(float x)
 {
-    // Abramowitz–Stegun style approximation, max error ~1e-3 — plenty for shadows.
+    // Abramowitz-Stegun style approximation, max error ~1e-3 - plenty for shadows.
     float s = sign(x);
     float a = abs(x);
     float t = 1.0 / (1.0 + 0.47047 * a);
@@ -98,7 +98,7 @@ float3 SampleBackdrop(float2 uv, float lod)
     return c * 0.25;
 }
 
-// ───────────────────────────── vertex shaders ─────────────────────────────
+// ----------------------------- vertex shaders -----------------------------
 
 // A quad in a card's local plane, optionally rotated in 3D and projected with a
 // simple pinhole camera whose screen plane is z = 0.
@@ -144,7 +144,7 @@ VSOut VSFullscreen(uint vid : SV_VertexID)
     return o;
 }
 
-// ───────────────────────────── backdrop ─────────────────────────────
+// ----------------------------- backdrop -----------------------------
 //  P0 = alpha, blur lod, dim, vignette
 //  P1 = ambient rgb, intensity        P2 = ambient centre xy (px), radius xy (px)
 //  P3 = left light rgb, intensity     P4 = right light rgb, intensity
@@ -213,7 +213,7 @@ float4 PSBackdrop(VSOut i) : SV_Target
     return float4(Dither(premul, px), a);
 }
 
-// ───────────────────────────── glass card ─────────────────────────────
+// ----------------------------- glass card -----------------------------
 //  P4 = preview rect (x0, y0, x1, y1, local px)   P5 = preview uv rect
 //  P6 = outer radius, preview radius, border, glass opacity
 //  P7 = accent rgb, focus
@@ -239,10 +239,10 @@ float4 PSCard(VSOut i) : SV_Target
     float d = SdRoundRect(L - oc, halfSize, radius);
     float inside = 1.0 - smoothstep(-aa, aa, d);
 
-    // Normalised position inside the outer rect: (0,0) top-left … (1,1) bottom-right.
+    // Normalised position inside the outer rect: (0,0) top-left ... (1,1) bottom-right.
     float2 nuv = (L - oc) / (halfSize * 2.0) + 0.5;
 
-    // ── Glass body ──
+    // -- Glass body --
     float3 tint = P[11].rgb;
     bool frost = P[9].w >= 0.0 && gGlobals.x > 0.5;
     float glassOpacity = P[6].w;
@@ -261,7 +261,7 @@ float4 PSCard(VSOut i) : SV_Target
     float sheen = saturate(1.0 - length(sheenP));
     glass += P[9].z * sheen * sheen * (0.7 + 0.6 * hover);
 
-    // ── Live preview ──
+    // -- Live preview --
     float4 rect = P[4];
     float2 pc = (rect.xy + rect.zw) * 0.5;
     float2 ph = (rect.zw - rect.xy) * 0.5;
@@ -284,13 +284,13 @@ float4 PSCard(VSOut i) : SV_Target
 
     float3 content = lerp(fallback, live, P[10].w);
 
-    // Hairline around the preview: dark outside, light inside — reads as a recessed screen.
+    // Hairline around the preview: dark outside, light inside - reads as a recessed screen.
     float pEdge = 1.0 - smoothstep(0.0, aa * 2.0 + 0.6, abs(pd));
     content = lerp(content, content * 0.55, pEdge * 0.35 * pin);
 
     float3 body = lerp(glass, content, pin);
 
-    // ── Rim light ──
+    // -- Rim light --
     float border = P[6].z;
     float rim = (1.0 - smoothstep(0.0, aa * 1.6 + 0.9, -d)) * inside;
     float3 rimColor = lerp(float3(1.0, 1.0, 1.0) * 0.55, accent * 1.2, smoothstep(0.25, 1.0, nuv.y));
@@ -304,7 +304,7 @@ float4 PSCard(VSOut i) : SV_Target
 
     float bodyA = inside * lerp(frost ? 1.0 : glassOpacity, 1.0, pin) * opacity;
 
-    // ── Outside: shadow + aura ──
+    // -- Outside: shadow + aura --
     float outside = 1.0 - inside;
     float shadowSigma = max(P[8].y, 1.0);
     float sd = SdRoundRect(L - oc - float2(0.0, P[8].x), halfSize - shadowSigma * 0.35, radius);
@@ -326,7 +326,7 @@ float4 PSCard(VSOut i) : SV_Target
     return float4(premul, bodyA) + under * (1.0 - bodyA);
 }
 
-// ───────────────────────────── sprite (icons, text) ─────────────────────────────
+// ----------------------------- sprite (icons, text) -----------------------------
 //  P4 = rect (x0, y0, x1, y1, local px)   P5 = uv rect   P6 = premultiplied tint   P7 = lod bias
 
 float4 PSSprite(VSOut i) : SV_Target
@@ -338,7 +338,7 @@ float4 PSSprite(VSOut i) : SV_Target
     return c * P[6] * P[0].w;
 }
 
-// ───────────────────────────── glow (soft light) ─────────────────────────────
+// ----------------------------- glow (soft light) -----------------------------
 //  P4 = rgb, intensity   P5 = falloff, core, streak direction xy
 
 float4 PSGlow(VSOut i) : SV_Target
@@ -361,7 +361,7 @@ float4 PSGlow(VSOut i) : SV_Target
     return float4(Dither(c, i.screen), 0.0);
 }
 
-// ───────────────────────────── orbit line ─────────────────────────────
+// ----------------------------- orbit line -----------------------------
 //  P4 = rgb, alpha   P5 = radii xy, thickness, glow width
 //  P6 = front alpha, back alpha, draw-in (0..1), unused
 //  P7 = front highlight, unused, time, velocity
@@ -382,7 +382,7 @@ float4 PSOrbit(VSOut i) : SV_Target
     float lineCov = 1.0 - smoothstep(thickness * 0.5, thickness * 0.5 + aa, d);
     float glow = exp(-d / glowW) * 0.28;
 
-    float theta = atan2(L.x / R.x, L.y / R.y);      // 0 = front (towards the viewer), ±π = back
+    float theta = atan2(L.x / R.x, L.y / R.y);      // 0 = front (towards the viewer), +/-pi = back
     float front = (1.0 + cos(theta)) * 0.5;
     float a = lerp(P[6].y, P[6].x, pow(front, 1.3));
 
@@ -401,7 +401,7 @@ float4 PSOrbit(VSOut i) : SV_Target
     return float4(Dither(P[4].rgb * intensity, i.screen), 0.0);
 }
 
-// ───────────────────────────── glass pill (chrome) ─────────────────────────────
+// ----------------------------- glass pill (chrome) -----------------------------
 //  P4 = radius, border, glass opacity, frost lod   P5 = tint rgb, accent mix
 //  P6 = accent rgb, focus glow                        P7 = centre xy (local), shadow off, outline mode
 
@@ -448,10 +448,10 @@ float4 PSPill(VSOut i) : SV_Target
     return float4(Dither(glass, i.screen) * bodyA, bodyA) + under * (1.0 - bodyA);
 }
 
-// ───────────────────────────── image processing (renderer-internal) ─────────────────────────────
+// ----------------------------- image processing (renderer-internal) -----------------------------
 //  Fullscreen passes. gViewport = target size. P0 = source texel size xy, source lod, unused.
 
-// 13-tap downsample (Jimenez 2014): a smooth, alias-free 2× reduction.
+// 13-tap downsample (Jimenez 2014): a smooth, alias-free 2x reduction.
 // P1.xy = uv extent of the valid content inside the source texture.
 float4 PSDownsample(VSOut i) : SV_Target
 {

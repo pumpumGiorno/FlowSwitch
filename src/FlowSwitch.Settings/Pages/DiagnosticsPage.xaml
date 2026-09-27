@@ -1,0 +1,61 @@
+<UserControl x:Class="FlowSwitch.Settings.Pages.DiagnosticsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:FlowSwitch.Settings.Controls">
+    <StackPanel>
+        <TextBlock Style="{StaticResource PageTitleText}" Text="Diagnostics" />
+        <TextBlock Style="{StaticResource PageSubtitleText}" TextWrapping="Wrap"
+                   Text="What is actually running right now, straight from FlowSwitch.exe. If anything here is not working, Windows' own Alt + Tab is used." />
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Status" />
+        <Border Style="{StaticResource GlassPanel}" CornerRadius="10">
+            <StackPanel>
+                <TextBlock x:Name="Headline" FontSize="18" FontWeight="SemiBold" Text="FlowSwitch: checking…" />
+                <TextBlock x:Name="HeadlineDetail" Style="{StaticResource CaptionText}" Margin="0,4,0,14" TextWrapping="Wrap" />
+                <Grid x:Name="StatusGrid">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Tests" />
+        <c:SettingCard Header="Test overlay" Icon="&#xE768;"
+                       Description="Opens the Solar System with your real windows for 5 seconds — without Alt + Tab. Works: the renderer is fine. Nothing appears: the problem is in the overlay / renderer. Ctrl + Alt + F12 does the same from anywhere.">
+            <Button x:Name="TestOverlayButton" Style="{StaticResource AccentButton}" Content="Test overlay" Click="OnTestOverlay" />
+        </c:SettingCard>
+        <c:SettingCard Header="Run diagnostics" Icon="&#xE9D9;"
+                       Description="Checks every step: host, keyboard hook, window enumeration, Direct3D 11, DirectComposition, shaders, overlay window, a test frame, Graphics Capture and a real (synthetic) Alt + Tab. Don't touch the keyboard while it runs.">
+            <Button x:Name="RunButton" Content="Run diagnostics" Click="OnRunDiagnostics" />
+        </c:SettingCard>
+        <c:SettingCard x:Name="SafeModeCard" Header="Safe mode is on" Icon="&#xE7BA;" Visibility="Collapsed"
+                       Description="FlowSwitch stopped several times in a row and paused itself; Windows' Alt + Tab is used. Exit safe mode to try again.">
+            <Button Style="{StaticResource AccentButton}" Content="Exit safe mode" Click="OnExitSafeMode" />
+        </c:SettingCard>
+
+        <Border x:Name="ReportPanel" Style="{StaticResource GlassPanel}" CornerRadius="10" Margin="0,6,0,0" Visibility="Collapsed">
+            <StackPanel>
+                <Grid Margin="0,0,0,8">
+                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Report" VerticalAlignment="Center" />
+                    <Button HorizontalAlignment="Right" Content="Copy" Click="OnCopyReport" />
+                </Grid>
+                <TextBox x:Name="ReportBox" IsReadOnly="True" TextWrapping="NoWrap" FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" MaxHeight="520" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Style="{StaticResource SectionHeaderText}" Text="Logs" />
+        <c:SettingCard Header="Detailed diagnostic logging" Icon="&#xE9D9;"
+                       Description="Start-up steps, renderer stages, every Alt+Tab decision and Alt / Tab / Shift / Esc transitions (never other keys).">
+            <c:ToggleSwitch IsChecked="{Binding Settings.Advanced.DiagnosticLogging}" />
+        </c:SettingCard>
+        <c:SettingCard Header="Log files" Icon="&#xE8B7;" x:Name="LogCard">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Open logs folder" Click="OnOpenLogs" Margin="0,0,8,0" />
+                <Button Content="Restart FlowSwitch" Click="OnRestart" />
+            </StackPanel>
+        </c:SettingCard>
+    </StackPanel>
+</UserControl>

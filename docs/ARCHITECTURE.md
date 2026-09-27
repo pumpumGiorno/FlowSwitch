@@ -152,6 +152,10 @@ trails, and no frosted glass below the High preset.
 
 | Failure | What happens |
 |---|---|
+| Renderer / overlay not (yet) working | `HookBridge.RendererReady` is false: the hook does not touch Alt + Tab at all. A failed renderer is retried after 5 s, 15 s, 1 min, then every 5 min. |
+| Session cannot start (no windows, exception, renderer lost) | The switcher *rejects* it and the hook replays that Alt + Tab to Windows immediately. |
+| DirectComposition unavailable | The overlay uses an opaque window swap chain instead. |
+| Windows.Graphics.Capture / WinRT projection unavailable | No live previews or blurred backdrop; the switcher works with icons. |
 | Overlay slow to respond (> 150 ms) | That Alt + Tab is replayed to Windows' switcher. |
 | Render loop stalls mid-session (> 0.7 s) | Hook releases the keyboard; if Alt is still held, the native switcher opens. |
 | Overlay frozen on screen (> 2.5 s) | Watchdog terminates the process (hook and overlay vanish instantly) and it relaunches. |
@@ -160,7 +164,7 @@ trails, and no frosted glass below the High preset.
 | 3 crashes in 10 minutes | Starts in safe mode: hook off, tray balloon explains, one click re-enables. |
 | Hook silently removed by Windows | Periodic and post-resume re-install. |
 | Missed Alt key-up (secure desktop) | Detected by the 100 ms health timer; the session commits. |
-| GPU device lost | Session closes, graphics are recreated on next use. |
+| GPU device lost / frames keep failing | Session closes and is handed to Windows; the renderer is taken out of service (Alt + Tab native) and recreated. |
 | Fullscreen game / listed app in front | Native Alt + Tab. |
 | Corrupt settings file | Moved aside as `settings.json.corrupt`, defaults used. |
 

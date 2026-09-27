@@ -84,7 +84,14 @@ To produce a folder you can copy to another PC:
 ```powershell
 ./build/publish.ps1                 # framework-dependent, → artifacts/FlowSwitch
 ./build/publish.ps1 -SelfContained  # includes the .NET runtime
+./build/publish.sh --self-contained --zip   # the same from Linux/macOS
 ```
+
+Always ship the folder these scripts produce: they publish both apps separately, refuse to merge
+files that differ between them and verify the result. Copying `bin/` output by hand, or publishing
+the two projects into one folder with plain `dotnet publish`, can silently mix incompatible DLLs.
+Start **FlowSwitch.Settings.exe** (it starts the resident `FlowSwitch.exe` and shows whether it is
+really running) or `FlowSwitch.exe` directly.
 
 Run the tests with `dotnet test`.
 
@@ -114,8 +121,10 @@ worst case is "Windows' own Alt + Tab appears":
 
 - The keyboard hook runs on its own high-priority thread and only classifies keys; it never waits
   for the UI, so Windows never has a reason to drop it.
-- After swallowing Tab, the overlay must acknowledge within **150 ms** (configurable). Otherwise the
-  keystroke is replayed and the native switcher opens — on that very press.
+- Alt + Tab is only taken over while the renderer and the overlay window actually work. Until
+  they are ready — or after any graphics failure — every key goes to Windows untouched.
+- After swallowing Tab, the overlay must acknowledge within **150 ms** (configurable), or it rejects
+  the session; either way the keystroke is replayed and the native switcher opens — on that very press.
 - A render-loop heartbeat is checked every 100 ms; if the UI stalls for 0.7 s the keyboard is given
   back immediately.
 - Alt is never swallowed, so Windows always knows the real modifier state; an unassigned key keeps
@@ -127,6 +136,19 @@ worst case is "Windows' own Alt + Tab appears":
   you list keep the native switcher.
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Troubleshooting
+
+- **Settings → Diagnostics** shows what is really running (main process, keyboard hook, renderer,
+  overlay, Graphics Capture, elevation, safe mode) and has **Test overlay** (the switcher with your
+  real windows for 5 s, without Alt + Tab) and **Run diagnostics** (a PASS/FAIL check of every step
+  from the keyboard hook to a presented frame, including a synthetic Alt + Tab).
+- <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>F12</kbd> opens the test overlay from anywhere. If it works
+  but Alt + Tab doesn't, the problem is in the keyboard path; if it doesn't, it is in the renderer.
+- Log: `%LOCALAPPDATA%\FlowSwitch\Logs\flowswitch.log` (Settings: *Open logs folder*). Every
+  start, every Win32/HRESULT failure with its meaning, and every Alt + Tab decision is recorded.
+
+See [docs/DIAGNOSTICS.md](docs/DIAGNOSTICS.md).
 
 ## Known limits
 

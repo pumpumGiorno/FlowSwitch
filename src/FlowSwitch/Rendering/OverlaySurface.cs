@@ -1,5 +1,6 @@
 using System.Numerics;
 using FlowSwitch.Core.Diagnostics;
+using FlowSwitch.Diagnostics;
 using FlowSwitch.Interop;
 using FlowSwitch.Shell;
 using SharpGen.Runtime;
@@ -48,20 +49,40 @@ internal sealed class OverlaySurface : NativeWindow
     {
         _gfx = gfx;
         Bounds = bounds;
-        CreateHandle("FlowSwitch.Overlay",
-            WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_NOREDIRECTIONBITMAP,
-            WS_POPUP, bounds.Left, bounds.Top, bounds.Width, bounds.Height, cursor: LoadCursorW(0, IDC_ARROW));
+        // Without DirectComposition the swap chain presents into the window itself, which then needs
+        // its redirection surface.
+        uint exStyle = WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | (gfx.Composition is not null ? WS_EX_NOREDIRECTIONBITMAP : 0);
+        try
+        {
+            CreateHandle("FlowSwitch.Overlay", exStyle, WS_POPUP, bounds.Left, bounds.Top, bounds.Width, bounds.Height,
+                cursor: LoadCursorW(0, IDC_ARROW));
+        }
+        catch (Exception ex)
+        {
+            throw new GraphicsInitException("CreateWindowEx(overlay)", ex.Message, ex);
+        }
+        Log.Info($"Overlay HWND created: 0x{Handle:X}, bounds {bounds} ({bounds.Width}×{bounds.Height}), " +
+                 $"exstyle 0x{GetExStyle(Handle):X8} (TOPMOST|TOOLWINDOW|NOACTIVATE{(gfx.Composition is not null ? "|NOREDIRECTIONBITMAP" : string.Empty)}), style 0x{GetStyle(Handle):X8}.");
 
         // Keep the overlay out of every screen capture — including our own backdrop capture.
         if (!SetWindowDisplayAffinity(Handle, WDA_EXCLUDEFROMCAPTURE))
-            Log.Debug("WDA_EXCLUDEFROMCAPTURE unavailable (Windows 10 < 2004).");
+            Log.Info($"SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE) unavailable: {ErrorText.Win32(System.Runtime.InteropServices.Marshal.GetLastPInvokeError())} (Windows 10 < 2004).");
         unsafe
         {
             int doNotRound = 1;
             DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, &doNotRound, sizeof(int));
         }
 
-        CreateSwapChain(bounds.Width, bounds.Height);
+        try
+        {
+            CreateSwapChain(bounds.Width, bounds.Height);
+        }
+        catch
+        {
+            DisposeGraphics();
+            base.Dispose();
+            throw;
+        }
     }
 
     public RECT Bounds { get; private set; }
@@ -69,6 +90,9 @@ internal sealed class OverlaySurface : NativeWindow
     public int Height => Bounds.Height;
     public bool IsVisible { get; private set; }
     public ID3D11RenderTargetView RenderTarget => _rtv!;
+
+    /// <summary>True in the no-DirectComposition fallback: the window cannot be see-through.</summary>
+    public bool IsOpaque { get; private set; }
 
     /// <summary>Signalled when the swap chain can accept a new frame (vsync pacing, lowest latency).</summary>
     public nint FrameLatencyWaitable { get; private set; }
@@ -90,20 +114,43 @@ internal sealed class OverlaySurface : NativeWindow
             AlphaMode = AlphaMode.Premultiplied,
             Flags = SwapChainFlags.FrameLatencyWaitableObject,
         };
-        _swapChain = _gfx.Factory.CreateSwapChainForComposition(_gfx.Device, desc, null);
+        if (_gfx.Composition is { } composition)
+        {
+            _swapChain = GraphicsDevice.Stage("IDXGIFactory2.CreateSwapChainForComposition",
+                () => _gfx.Factory.CreateSwapChainForComposition(_gfx.Device, desc, null));
+        }
+        else
+        {
+            desc.AlphaMode = AlphaMode.Ignore;
+            _swapChain = GraphicsDevice.Stage("IDXGIFactory2.CreateSwapChainForHwnd",
+                () => _gfx.Factory.CreateSwapChainForHwnd(_gfx.Device, Handle, desc, null, null));
+            IsOpaque = true;
+        }
         _swapChain2 = _swapChain.QueryInterfaceOrNull<IDXGISwapChain2>();
         if (_swapChain2 is not null)
         {
             _swapChain2.MaximumFrameLatency = 1;
             FrameLatencyWaitable = _swapChain2.FrameLatencyWaitableObject;
         }
+        Log.Info($"Swap chain created: {desc.Width}×{desc.Height} BGRA {(IsOpaque ? "opaque, for the window (fallback)" : "premultiplied, for composition")}, " +
+                 $"flip-sequential, frame-latency waitable {(FrameLatencyWaitable != 0 ? "yes" : "no (IDXGISwapChain2 unavailable)")}.");
 
-        _gfx.Composition.CreateTargetForHwnd(Handle, true, out _target).CheckError();
-        _gfx.Composition.CreateVisual(out _visual).CheckError();
-        _visual!.SetContent(_swapChain);
-        _target!.SetRoot(_visual);
-        _gfx.Composition.Commit().CheckError();
-        CreateTargetView();
+        if (_gfx.Composition is { } dcomp)
+        {
+            HostHealth.Composition = ComponentState.Failed; // until the whole chain below succeeds
+            GraphicsDevice.Check("IDCompositionDevice.CreateTargetForHwnd", dcomp.CreateTargetForHwnd(Handle, true, out _target));
+            GraphicsDevice.Check("IDCompositionDevice.CreateVisual", dcomp.CreateVisual(out _visual));
+            GraphicsDevice.Check("IDCompositionVisual.SetContent", _visual!.SetContent(_swapChain));
+            GraphicsDevice.Check("IDCompositionTarget.SetRoot", _target!.SetRoot(_visual));
+            GraphicsDevice.Check("IDCompositionDevice.Commit", dcomp.Commit());
+            Log.Info("DirectComposition initialized (target → visual → swap chain, committed).");
+            HostHealth.Composition = ComponentState.Ready;
+        }
+        GraphicsDevice.Stage("CreateRenderTargetView(back buffer)", () =>
+        {
+            CreateTargetView();
+            return true;
+        });
     }
 
     private void CreateTargetView()
@@ -130,14 +177,39 @@ internal sealed class OverlaySurface : NativeWindow
     public void Show()
     {
         if (IsVisible) return;
-        SetWindowPos(Handle, HWND_TOPMOST, Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        bool ok = SetWindowPos(Handle, HWND_TOPMOST, Bounds.Left, Bounds.Top, Bounds.Width, Bounds.Height, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        int error = System.Runtime.InteropServices.Marshal.GetLastPInvokeError();
         IsVisible = true;
+        if (!ok)
+        {
+            ErrorText.LogWin32Failure("SetWindowPos(overlay, HWND_TOPMOST, SWP_SHOWWINDOW)", false, error);
+            ShowWindow(Handle, SW_SHOWNOACTIVATE);
+        }
+        LogPlacement("shown");
+    }
+
+    /// <summary>Logs where the window really is: position, size, visibility, topmost, foreground.</summary>
+    public string LogPlacement(string what)
+    {
+        GetWindowRect(Handle, out RECT actual);
+        uint ex = GetExStyle(Handle);
+        bool visible = IsWindowVisible(Handle);
+        nint foreground = GetForegroundWindow();
+        string text = $"Overlay {what}: HWND 0x{Handle:X}, visible {visible}, rect {actual} ({actual.Width}×{actual.Height}), " +
+                      $"expected {Bounds}, topmost {(ex & WS_EX_TOPMOST) != 0}, cloaked {IsCloaked(Handle)}, foreground 0x{foreground:X}.";
+        if (!visible || actual.Width != Bounds.Width || actual.Height != Bounds.Height || (ex & WS_EX_TOPMOST) == 0) Log.Warn(text);
+        else Log.Info(text);
+        return text;
     }
 
     public void Hide()
     {
         if (!IsVisible) return;
+        long start = System.Diagnostics.Stopwatch.GetTimestamp();
         ShowWindow(Handle, SW_HIDE);
+        double ms = System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+        if (ms > 50) Log.Warn($"Hiding the overlay took {ms:0} ms.");
+        else Log.Debug($"Overlay hidden ({ms:0.0} ms).");
         IsVisible = false;
         _tracking = false;
     }
@@ -148,11 +220,14 @@ internal sealed class OverlaySurface : NativeWindow
         var result = _swapChain!.Present(vsync ? 1u : 0u, PresentFlags.None);
         if (result.Failure)
         {
-            Log.Warn($"Present failed: {result}");
+            LastPresentError = ErrorText.HResult(result.Code);
+            Log.Warn($"IDXGISwapChain.Present failed: {LastPresentError}");
             return false;
         }
         return true;
     }
+
+    public string? LastPresentError { get; private set; }
 
     protected override nint WndProc(uint msg, nuint wParam, nint lParam, out bool handled)
     {
@@ -202,13 +277,23 @@ internal sealed class OverlaySurface : NativeWindow
 
     private static Vector2 Point(nint lParam) => new((short)(lParam & 0xFFFF), (short)((lParam >> 16) & 0xFFFF));
 
-    public override void Dispose()
+    private void DisposeGraphics()
     {
         _rtv?.Dispose();
         _visual?.Dispose();
         _target?.Dispose();
         _swapChain2?.Dispose();
         _swapChain?.Dispose();
+        _rtv = null;
+        _visual = null;
+        _target = null;
+        _swapChain2 = null;
+        _swapChain = null;
+    }
+
+    public override void Dispose()
+    {
+        DisposeGraphics();
         base.Dispose();
     }
 }

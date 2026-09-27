@@ -24,8 +24,13 @@ public partial class App : Application
 
     public SettingsModel Model => _model ?? throw new InvalidOperationException("Settings are not loaded yet.");
 
+    private RollingFileLog? _log;
+
     protected override void OnStartup(StartupEventArgs e)
     {
+        _log = new RollingFileLog(FlowSwitchPaths.SettingsLog);
+        Log.SetSink(_log);
+        Log.Info($"FlowSwitch Settings {typeof(App).Assembly.GetName().Version} starting ({Environment.ProcessPath}, args: {string.Join(' ', e.Args)}).");
         base.OnStartup(e);
         bool onboarding = e.Args.Any(a => string.Equals(a, "--onboarding", StringComparison.OrdinalIgnoreCase));
 
@@ -118,6 +123,8 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _model?.Dispose();
+        Log.Info("FlowSwitch Settings exiting.");
+        _log?.Dispose();
         _activateWait?.Unregister(null);
         _onboardingWait?.Unregister(null);
         _activate?.Dispose();

@@ -47,6 +47,13 @@ internal static class HookMessages
     public const uint Ping = Win32.WM_APP + 8;
 }
 
+/// <summary>Messages posted to the keyboard-hook thread's queue (PostThreadMessage).</summary>
+internal static class HookThreadMessages
+{
+    /// <summary>The switcher cannot show this session: give the swallowed Tab back to Windows. wParam = session id.</summary>
+    public const uint Reject = Win32.WM_APP + 23;
+}
+
 /// <summary>
 /// Lock-free state shared between the keyboard-hook thread and the switcher (UI) thread.
 /// </summary>
@@ -59,6 +66,12 @@ internal sealed class HookBridge
 {
     /// <summary>Marker placed in dwExtraInfo of every input FlowSwitch injects, so the hook lets it through.</summary>
     public const nuint InjectionMarker = 0x464C4F57; // "FLOW"
+
+    /// <summary>
+    /// Marker of the self-test's synthetic Alt+Tab. Unlike <see cref="InjectionMarker"/> the hook
+    /// processes these like real keys — that is the point of the test.
+    /// </summary>
+    public const nuint DiagnosticMarker = 0x46534454; // "FSDT"
 
     public const int StateIdle = 0;
     public const int StateActive = 1;
@@ -74,6 +87,25 @@ internal sealed class HookBridge
     public volatile nint TargetWindow;
 
     public volatile bool Enabled = true;
+
+    /// <summary>
+    /// Set by the switcher thread once the Direct3D device, shaders and overlay window exist and
+    /// cleared the moment any of them fails. Alt+Tab is only taken over while this is true —
+    /// otherwise every key goes to Windows untouched and the native switcher works as usual.
+    /// </summary>
+    public volatile bool RendererReady;
+
+    /// <summary>Logs Alt / Tab / Shift / Esc transitions (never other keys) for diagnosing the input pipeline.</summary>
+    public volatile bool VerboseInput = true;
+
+    /// <summary>The host's main (tray) window: receives <see cref="DiagnosticKeyMessage"/>.</summary>
+    public volatile nint HostWindow;
+
+    /// <summary>Posted to <see cref="HostWindow"/> when the hook sees Ctrl+Alt+F12 (backup for RegisterHotKey).</summary>
+    public const uint DiagnosticKeyMessage = Win32.WM_APP + 30;
+
+    /// <summary>Thread id of the keyboard-hook thread (for <see cref="HookThreadMessages"/>).</summary>
+    public volatile uint HookThreadId;
     public volatile bool AltTab = true;
     public volatile bool Reverse = true;
     public volatile bool Sticky = true;
@@ -119,6 +151,17 @@ internal sealed class HookBridge
     }
 
     public bool IsAcknowledged(int sessionId) => _ackedSessionId == sessionId;
+
+    /// <summary>
+    /// Switcher thread (any time, even after ending the session itself): "I cannot show session <paramref name="sessionId"/>" — the hook ends it and
+    /// replays the swallowed Tab so Windows' own Alt+Tab opens on this very key press.
+    /// </summary>
+    public void RejectSession(int sessionId)
+    {
+        uint thread = HookThreadId;
+        if (thread == 0 || !Win32.PostThreadMessageW(thread, HookThreadMessages.Reject, (nuint)sessionId, 0))
+            EndSession(sessionId);
+    }
 
     /// <summary>Switcher thread heartbeat (every frame while visible, every message while idle).</summary>
     public void ReportAlive()

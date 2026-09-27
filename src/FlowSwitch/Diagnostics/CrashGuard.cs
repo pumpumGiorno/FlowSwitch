@@ -20,10 +20,10 @@ internal sealed class CrashGuard
     private const int LoopThreshold = 3;
 
     private readonly SettingsStore _store;
-    private readonly FileLogSink? _log;
+    private readonly RollingFileLog? _log;
     private int _handling;
 
-    public CrashGuard(SettingsStore store, FileLogSink? log)
+    public CrashGuard(SettingsStore store, RollingFileLog? log)
     {
         _store = store;
         _log = log;
@@ -66,6 +66,7 @@ internal sealed class CrashGuard
         {
             state.SafeMode = true;
             state.SafeModeReason = $"FlowSwitch stopped {recent.Count} times in the last {LoopWindow.TotalMinutes:0} minutes.";
+            Log.Warn($"Crash loop detected: {state.SafeModeReason} Entering safe mode.");
             reason = state.SafeModeReason;
             TrySave(state);
             return true;
@@ -95,7 +96,11 @@ internal sealed class CrashGuard
         state.RecentCrashes = state.RecentCrashes.Where(t => DateTimeOffset.UtcNow - t < LoopWindow).ToList();
         TrySave(state);
 
-        if (AutoRestart && state.RecentCrashes.Count < LoopThreshold) Relaunch("--recover");
+        bool restart = AutoRestart && state.RecentCrashes.Count < LoopThreshold;
+        _log?.WriteNow($"Crash recorded ({state.RecentCrashes.Count} in the last {LoopWindow.TotalMinutes:0} min); " +
+                       (restart ? "restarting." : state.RecentCrashes.Count >= LoopThreshold ? "next start will be in SAFE MODE." : "auto-restart is off."));
+        _log?.Flush(TimeSpan.FromSeconds(1));
+        if (restart) Relaunch("--recover");
     }
 
     /// <summary>The UI thread stopped responding: restart cleanly rather than keep a frozen overlay on screen.</summary>
