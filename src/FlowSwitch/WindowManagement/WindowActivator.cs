@@ -68,11 +68,19 @@ internal static unsafe class WindowActivator
         return fg == hwnd || (fg != 0 && GetAncestor(fg, GA_ROOTOWNER) == hwnd);
     }
 
+    /// <summary>
+    /// Windows lifts the foreground lock when Alt is pressed. Alt is tapped together with an
+    /// unassigned key so the previously focused app does not open its menu bar.
+    /// </summary>
     private static void InjectNeutralKey()
     {
-        INPUT* inputs = stackalloc INPUT[2];
-        inputs[0] = INPUT.Key(VK_DUMMY, false, HookBridge.InjectionMarker);
-        inputs[1] = INPUT.Key(VK_DUMMY, true, HookBridge.InjectionMarker);
-        SendInput(2, inputs, sizeof(INPUT));
+        INPUT* inputs = stackalloc INPUT[4];
+        uint n = 0;
+        bool altHeld = IsKeyDown(VK_MENU);
+        if (!altHeld) inputs[n++] = INPUT.Key(VK_LMENU, false, HookBridge.InjectionMarker);
+        inputs[n++] = INPUT.Key(VK_DUMMY, false, HookBridge.InjectionMarker);
+        inputs[n++] = INPUT.Key(VK_DUMMY, true, HookBridge.InjectionMarker);
+        if (!altHeld) inputs[n++] = INPUT.Key(VK_LMENU, true, HookBridge.InjectionMarker);
+        SendInput(n, inputs, sizeof(INPUT));
     }
 }
