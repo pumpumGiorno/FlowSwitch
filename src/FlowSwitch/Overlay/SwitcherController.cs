@@ -206,7 +206,7 @@ internal sealed class SwitcherController : IDisposable
                 if ((int)lParam == _sessionId) _session?.Cancel();
                 break;
             case HookMessages.Abort:
-                if ((int)lParam == _sessionId) FinishSession(immediate: true);
+                if ((int)lParam == _sessionId) FinishSession();
                 break;
             case HookMessages.Prewarm:
                 Prewarm();
@@ -232,7 +232,7 @@ internal sealed class SwitcherController : IDisposable
     {
         // Answer the hook first: from here on the overlay is committed to this Alt+Tab.
         _bridge.Acknowledge(id);
-        if (_state != State.Idle) FinishSession(immediate: true);
+        if (_state != State.Idle) FinishSession(releaseMemory: false);
         if (!InitializeGraphics())
         {
             _bridge.EndSession(id);
@@ -360,8 +360,9 @@ internal sealed class SwitcherController : IDisposable
             s.Commit();
             while (s.TryDequeueEffect(out var effect))
                 if (effect is ActivateWindowEffect a) WindowActivator.Activate(a.Window.Handle);
-            FinishSession(immediate: true);
-            if (target is not null && _settings.General.QuickSwitchHighlight && !_motion.Reduced) StartFlash(target);
+            bool flash = target is not null && _settings.General.QuickSwitchHighlight && !_motion.Reduced;
+            FinishSession(releaseMemory: !flash);
+            if (flash) StartFlash(target!);
             return;
         }
         s.Commit();
@@ -429,12 +430,12 @@ internal sealed class SwitcherController : IDisposable
             Draw(now, dt);
             // Show the windows only after their first frame is presented, so no stale content flashes.
             if (_primary is { IsVisible: false }) ShowOverlays();
-            if (_animator.IsFinished) FinishSession(immediate: false);
+            if (_animator.IsFinished) FinishSession();
         }
         catch (Exception ex)
         {
             Log.Error("Frame failed — closing the switcher", ex);
-            FinishSession(immediate: true);
+            FinishSession();
             if (_gfx?.IsLost == true)
             {
                 Log.Warn("GPU device lost; graphics will be recreated on next use.");
@@ -502,7 +503,7 @@ internal sealed class SwitcherController : IDisposable
                     _bridge.EndSession(_sessionId);
                     if (_state == State.Pending)
                     {
-                        FinishSession(immediate: true);
+                        FinishSession();
                         return;
                     }
                     _animator.BeginExit(d.Committed, s.Selected?.Key, d.Committed ? ExitRect(s.Target) : null);
@@ -538,7 +539,7 @@ internal sealed class SwitcherController : IDisposable
         return new Vector4(b.X - m.Left, b.Y - m.Top, b.Width, b.Height);
     }
 
-    private void FinishSession(bool immediate)
+    private void FinishSession(bool releaseMemory = true)
     {
         if (_sessionId != 0) _bridge.EndSession(_sessionId);
         _primary?.Hide();
@@ -554,7 +555,13 @@ internal sealed class SwitcherController : IDisposable
         _previewDue.Clear();
         GCSettings.LatencyMode = GCLatencyMode.Interactive;
         if (_renderer is not null && _renderer.Text.Clock > 2000) _renderer.Text.Trim(_renderer.Text.Clock - 1500);
-        _ = immediate;
+        if (releaseMemory && _gfx is not null)
+        {
+            // Nothing renders until the next Alt+Tab: hand the driver's scratch memory back.
+            // Every frame binds its full pipeline state, so clearing it here is free.
+            _gfx.Context.ClearState();
+            _gfx.Trim();
+        }
     }
 
     // ═════════════════════════════════════ captures ═════════════════════════════════════
@@ -843,6 +850,11 @@ internal sealed class SwitcherController : IDisposable
             _primary?.Hide();
             OverlayVisible = false;
             _state = State.Idle;
+            if (_gfx is not null)
+            {
+                _gfx.Context.ClearState();
+                _gfx.Trim();
+            }
             return;
         }
         float scale = DesignSpace.For(new Vector2(_primary.Width, _primary.Height)).Scale;
@@ -900,7 +912,7 @@ internal sealed class SwitcherController : IDisposable
 
     public void Dispose()
     {
-        FinishSession(immediate: true);
+        FinishSession();
         _tracker.Dispose();
         _icons.Dispose();
         _desktops.Dispose();

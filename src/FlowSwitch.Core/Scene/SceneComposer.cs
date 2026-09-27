@@ -393,11 +393,13 @@ public sealed class SceneComposer
         {
             float iconSize = MathF.Min(ph.X, ph.Y) * 0.62f;
             EmitIcon(t, window.App.Id, new Vector2(0f, -iconSize * 0.08f), iconSize, opacity * fallback);
-            if (pose.Focus < 0.5f && k > 0.2f && pose.LabelAlpha < 0.99f)
+            // The name inside the card only stands in while there is no orbit label; never both.
+            float labelFree = 1f - Easing.Smoothstep(0f, 0.2f, pose.LabelAlpha);
+            if (pose.Focus < 0.5f && k > 0.2f && labelFree > 0.01f)
             {
                 var name = Text(window.App.DisplayName, 13f * p.FontScale * _s, 500, FontFamilyKind.Text, 360f * _s);
                 EmitText(t, name, new Vector2(0f, iconSize * 0.5f + 6f * _s * k), new Vector2(0.5f, 0f),
-                    MathF.Min(1f, k / 0.34f), opacity * fallback * 0.8f * (1f - pose.Focus) * (1f - pose.LabelAlpha));
+                    MathF.Min(1f, k / 0.34f), opacity * fallback * 0.8f * (1f - pose.Focus) * labelFree);
             }
             if (window.IsMinimized && pose.Focus > 0.5f)
             {
